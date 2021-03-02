@@ -15,8 +15,7 @@ fn supports_booleans() {
 
     assert_eq!(
         foo,
-        Interface::new("Foo")
-            .field(Field::new("bar", Type::Builtin(Builtin::Boolean)))
+        Interface::new("Foo").field(Field::new("bar", Type::Builtin(Builtin::Boolean)))
     );
 }
 
@@ -59,8 +58,7 @@ fn supports_chars() {
 
     assert_eq!(
         foo,
-        Interface::new("Foo")
-            .field(Field::new("foo", Type::Builtin(Builtin::String)))
+        Interface::new("Foo").field(Field::new("foo", Type::Builtin(Builtin::String)))
     );
 }
 
