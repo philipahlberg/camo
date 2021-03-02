@@ -4,13 +4,19 @@ on:
     types: [created]
 jobs:
   publish:
-    strategy:
-      matrix:
-        crate: [camo, camo-derive, camo-typescript]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: cd ${{ matrix.crate }}
+      - run: cargo test
       - run: cargo publish
+        working-directory: ./camo
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATESIO_TOKEN }}
+      - run: cargo publish
+        working-directory: ./camo-derive
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATESIO_TOKEN }}
+      - run: cargo publish
+        working-directory: ./camo-typescript
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATESIO_TOKEN }}
