@@ -1,6 +1,6 @@
 [package]
 name = "camo-typescript"
-version = "0.0.0"
+version = "0.1.0"
 authors = ["philipahlberg <philipahlberg@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/philipahlberg/camo"
@@ -15,8 +15,8 @@ description = "Generate TypeScript bindings for Rust types"
 doctest = false
 
 [dependencies]
-camo = { version = "0.0", path = "../camo" }
+camo = { version = "0.1", path = "../camo" }
 
 [dev-dependencies]
-camo-derive = { version = "0.0", path = "../camo-derive" }
+camo-derive = { path = "../camo-derive" }
 unindent = "0.1"

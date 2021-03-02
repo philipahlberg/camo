@@ -1,6 +1,6 @@
 [package]
 name = "camo-derive"
-version = "0.0.0"
+version = "0.1.0"
 authors = ["philipahlberg <philipahlberg@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/philipahlberg/camo"
@@ -22,4 +22,4 @@ syn = "1.0"
 
 [dev-dependencies]
 trybuild = "1.0"
-camo = { version = "0.0", path = "../camo" }
+camo = { path = "../camo" }
