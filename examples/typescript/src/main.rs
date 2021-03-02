@@ -21,7 +21,7 @@ fn main() -> std::result::Result<(), std::io::Error> {
 
     let mut contents = String::new();
     for ty in types {
-        write!(contents, "{}\n", ty).unwrap();
+        writeln!(contents, "{}", ty).unwrap();
     }
 
     std::fs::write("types.ts", contents)
