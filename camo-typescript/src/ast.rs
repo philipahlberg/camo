@@ -45,8 +45,7 @@ impl fmt::Display for Interface {
     }
 }
 
-/// Represents an `interface` field, e.g:
-/// `<name>: <ty>`
+/// Represents an `interface` field.
 #[derive(Debug, PartialEq)]
 pub struct Field {
     /// The name of the field.
