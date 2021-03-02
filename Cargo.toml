@@ -1,14 +1,7 @@
-[package]
-name = "camo"
-version = "0.0.0"
-authors = ["philipahlberg <philipahlberg@gmail.com>"]
-edition = "2018"
-repository = "https://github.com/philipahlberg/camo"
-homepage = "https://github.com/philipahlberg/camo"
-documentation = "https://docs.rs/camo"
-readme = "README.md"
-license = "MIT"
-categories = ["development-tools", "web-programming"]
-description = "Foreign language interface generation"
-
-[dependencies]
+[workspace]
+members = [
+    "camo",
+    "camo-derive",
+    "camo-typescript",
+    "examples/typescript",
+]

@@ -1,0 +1,22 @@
+[package]
+name = "camo-typescript"
+version = "0.0.0"
+authors = ["philipahlberg <philipahlberg@gmail.com>"]
+edition = "2018"
+repository = "https://github.com/philipahlberg/camo"
+homepage = "https://github.com/philipahlberg/camo"
+documentation = "https://docs.rs/camo-typescript"
+readme = "README.md"
+license = "MIT"
+categories = ["development-tools", "web-programming"]
+description = "Generate TypeScript bindings for Rust types"
+
+[lib]
+doctest = false
+
+[dependencies]
+camo = { version = "0.0", path = "../camo" }
+
+[dev-dependencies]
+camo-derive = { version = "0.0", path = "../camo-derive" }
+unindent = "0.1"

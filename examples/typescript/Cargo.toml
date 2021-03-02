@@ -1,0 +1,11 @@
+[package]
+name = "typescript"
+version = "0.0.0"
+authors = ["philipahlberg <philipahlberg@gmail.com>"]
+edition = "2018"
+publish = false
+
+[dependencies]
+camo = { path = "../../camo" }
+camo-derive = { path = "../../camo-derive" }
+camo-typescript = { path = "../../camo-typescript" }
