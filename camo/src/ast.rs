@@ -1,10 +1,15 @@
+/// Represents a `struct` definition.
 #[derive(Debug, PartialEq)]
 pub struct Struct {
+    /// The name of the struct.
     pub name: String,
+    /// The fields of the struct.
     pub fields: Vec<Field>,
 }
 
 impl Struct {
+    /// Create a new struct with the given name
+    /// and an empty list of fields.
     pub fn new(name: &str) -> Self {
         Self {
             name: String::from(name),
@@ -12,19 +17,25 @@ impl Struct {
         }
     }
 
+    /// Add a field to the struct.
     pub fn field(mut self, field: Field) -> Self {
         self.fields.push(field);
         self
     }
 }
 
+/// Represents a named `struct` field, e. g:
+/// `<name>: <ty>`
 #[derive(Debug, PartialEq)]
 pub struct Field {
+    /// The name of the field.
     pub name: String,
+    /// The type of the field.
     pub ty: Type,
 }
 
 impl Field {
+    /// Create a new field with the given name and type.
     pub fn new(name: &str, ty: Type) -> Self {
         Self {
             name: String::from(name),
@@ -33,11 +44,14 @@ impl Field {
     }
 }
 
+/// Represents a type use, e. g. in a struct definition,
+/// function definition, or type alias.
 #[derive(Debug, PartialEq)]
 pub enum Type {
     Builtin(Builtin),
 }
 
+/// The built-in types.
 #[derive(Debug, PartialEq)]
 pub enum Builtin {
     Bool,
@@ -59,6 +73,8 @@ pub enum Builtin {
     Str,
 }
 
+/// Describes how to represent the source type
+/// as a `Type` (type use value).
 pub trait IntoType {
     fn into_type() -> Type;
 }

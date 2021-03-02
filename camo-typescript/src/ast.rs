@@ -1,12 +1,17 @@
 use std::fmt;
 
+/// Represents a TypeScript `interface` declaration.
 #[derive(Debug, PartialEq)]
 pub struct Interface {
+    /// The name of the interface.
     pub name: String,
+    /// The fields of the interface.
     pub fields: Vec<Field>,
 }
 
 impl Interface {
+    /// Create a new interface with the given name
+    /// and an empty list of fields.
     pub fn new(name: &str) -> Self {
         Self {
             name: String::from(name),
@@ -14,6 +19,7 @@ impl Interface {
         }
     }
 
+    /// Add a field to the interface.
     pub fn field(mut self, field: Field) -> Self {
         self.fields.push(field);
         self
@@ -39,13 +45,18 @@ impl fmt::Display for Interface {
     }
 }
 
+/// Represents an `interface` field, e.g:
+/// `<name>: <ty>`
 #[derive(Debug, PartialEq)]
 pub struct Field {
+    /// The name of the field.
     pub name: String,
+    /// The type of the field.
     pub ty: Type,
 }
 
 impl Field {
+    /// Create a new field with the given name and type.
     pub fn new(name: &str, ty: Type) -> Self {
         Self {
             name: String::from(name),
@@ -69,6 +80,8 @@ impl fmt::Display for Field {
     }
 }
 
+/// Represents a type use, e. g. in an interface definition,
+/// function type definition, or type alias.
 #[derive(Debug, PartialEq)]
 pub enum Type {
     Builtin(Builtin),
@@ -90,10 +103,14 @@ impl fmt::Display for Type {
     }
 }
 
+/// The built-in types.
 #[derive(Debug, PartialEq)]
 pub enum Builtin {
+    /// The `number` type.
     Number,
+    /// The `boolean` type.
     Boolean,
+    /// The `string` type.
     String,
 }
 

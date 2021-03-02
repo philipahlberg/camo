@@ -1,3 +1,13 @@
+//! This crate provides `camo`'s derive macro.
+//!
+//! ```edition2018
+//! # use camo_derive::Camo;
+//! # #[derive(Camo)]
+//! # struct Foo {}
+//! #
+//! # fn main() {}
+//! ```
+
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
