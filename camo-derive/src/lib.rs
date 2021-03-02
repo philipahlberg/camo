@@ -6,11 +6,9 @@
 //! struct Foo {
 //!     bar: i32,
 //! }
-//! 
-//! fn main() {
-//!     let ast = Foo::camo();
-//!    // ...
-//! }
+//!
+//! let ast = Foo::camo();
+//! // ...
 //! ```
 
 use proc_macro2::TokenStream;
