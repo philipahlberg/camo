@@ -1,7 +1,8 @@
 use camo::{export, Camo as _};
 use camo_derive::Camo;
 use camo_typescript::Interface;
-use std::fmt::Write;
+use std::fs::File;
+use std::io::Write as _;
 
 #[derive(Camo, Debug)]
 struct Foo {
@@ -19,10 +20,11 @@ struct Bar {
 fn main() -> std::result::Result<(), std::io::Error> {
     let types: Vec<Interface> = export! { Foo, Bar };
 
-    let mut contents = String::new();
+    let mut file = File::create("types.ts")?;
+
     for ty in types {
-        writeln!(contents, "{}", ty).unwrap();
+        writeln!(file, "{}", ty).unwrap();
     }
 
-    std::fs::write("types.ts", contents)
+    Ok(())
 }
