@@ -35,7 +35,7 @@ pub fn derive_camo(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 }
 
 fn has_generics(generics: &Generics) -> bool {
-    generics.params.iter().next().is_some()
+    generics.params.iter().size_hint().0 != 0
 }
 
 fn build_trailing_expression(data: &Data) -> TokenStream {
