@@ -1,11 +1,14 @@
 //! This crate provides `camo`'s derive macro.
 //!
 //! ```edition2018
-//! # use camo_derive::Camo;
-//! # #[derive(Camo)]
-//! # struct Foo {}
-//! #
-//! # fn main() {}
+//! use camo_derive::Camo;
+//! #[derive(Camo)]
+//! struct Foo {
+//!     bar: i32,
+//! }
+//!
+//! let ast = Foo::camo();
+//! // ...
 //! ```
 
 use proc_macro2::TokenStream;

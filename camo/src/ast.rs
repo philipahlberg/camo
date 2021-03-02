@@ -24,8 +24,7 @@ impl Struct {
     }
 }
 
-/// Represents a named `struct` field, e. g:
-/// `<name>: <ty>`
+/// Represents a named `struct` field.
 #[derive(Debug, PartialEq)]
 pub struct Field {
     /// The name of the field.
