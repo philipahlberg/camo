@@ -67,10 +67,26 @@ impl Field {
 impl From<camo::Field> for Field {
     fn from(field: camo::Field) -> Self {
         Self {
-            name: field.name,
+            name: snake_to_camel_case(&field.name),
             ty: Type::from(field.ty),
         }
     }
+}
+
+fn snake_to_camel_case(field: &str) -> String {
+    let mut result = String::new();
+    let mut capitalize = false;
+    for ch in field.chars() {
+        if ch == '_' {
+            capitalize = true;
+        } else if capitalize {
+            result.push(ch.to_ascii_uppercase());
+            capitalize = false;
+        } else {
+            result.push(ch);
+        }
+    }
+    result
 }
 
 impl fmt::Display for Field {

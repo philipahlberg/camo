@@ -107,3 +107,25 @@ fn works_with_export() {
             .field(Field::new("bar", Type::Builtin(Builtin::Boolean)))
     );
 }
+
+#[test]
+fn rewrites_to_camel_case() {
+    use camo_derive::Camo;
+
+    #[derive(Camo)]
+    struct Foo {
+        #[allow(unused)]
+        field_foo: u32,
+        #[allow(unused)]
+        field_foo_bar: bool,
+    }
+
+    let foo: Interface = Foo::camo().into();
+
+    assert_eq!(
+        foo,
+        Interface::new("Foo")
+            .field(Field::new("fieldFoo", Type::Builtin(Builtin::Number)))
+            .field(Field::new("fieldFooBar", Type::Builtin(Builtin::Boolean)))
+    );
+}
