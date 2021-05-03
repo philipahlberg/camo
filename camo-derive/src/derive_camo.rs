@@ -8,8 +8,7 @@ pub fn derive_camo(input: DeriveInput) -> TokenStream {
 
     if has_generics(&input.generics) {
         let span = input.generics.span();
-        return Error::new(span, "`camo` does not support generics")
-            .to_compile_error();
+        return Error::new(span, "`camo` does not support generics").to_compile_error();
     }
 
     let fields = build_trailing_expression(&input.data);
