@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use camo::{export, Camo as _};
 use camo_derive::Camo;
 use camo_typescript::Interface;
