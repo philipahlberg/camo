@@ -7,6 +7,8 @@
 [![crates.io camo-derive][cratesio-version-camo-derive]][docsrs-crate-camo-derive]
 [![crates.io camo-typescript][cratesio-version-camo-typescript]][docsrs-crate-camo-typescript]
 
+[![dependencies][schedule-workflow-badge]][schedule-workflow]
+
 Translate Rust type definitions to other languages.
 
 ---
@@ -24,3 +26,5 @@ Translate Rust type definitions to other languages.
 [cratesio-version-camo]: https://img.shields.io/crates/v/camo?label=camo
 [cratesio-version-camo-derive]: https://img.shields.io/crates/v/camo-derive?label=camo_derive
 [cratesio-version-camo-typescript]: https://img.shields.io/crates/v/camo-typescript?label=camo_typescript
+[schedule-workflow]: https://github.com/Project-WeShare-2-0/WeShare-2-0/actions/workflows/on_cron_daily.yml
+[schedule-workflow-badge]: https://github.com/Project-WeShare-2-0/WeShare-2-0/actions/workflows/on_cron_daily.yml/badge.svg

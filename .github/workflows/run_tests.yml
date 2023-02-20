@@ -1,0 +1,25 @@
+name: tests
+
+on:
+  workflow_call:
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
+
+jobs:
+  unit_tests:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v2
+      - run: cargo --version
+      - run: cargo test --lib --no-run
+      - run: cargo test --lib --verbose
+
+  integration_tests:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v2
+      - run: cargo --version
+      - run: cargo test --test integration_tests --no-run
+      - run: cargo test --test integration_tests --verbose

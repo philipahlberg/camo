@@ -1,0 +1,25 @@
+name: push
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  tests:
+    uses: ./.github/workflows/run_tests.yml
+
+  fmt:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v2
+      - run: cargo --version
+      - run: cargo fmt -v --all -- --check
+
+  clippy:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v2
+      - run: cargo --version
+      - run: cargo clippy --all-features -- -D warnings

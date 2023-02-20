@@ -1,12 +1,19 @@
-name: cargo-publish
+name: release
+
 on:
   release:
     types: [created]
+
 jobs:
+  tests:
+    uses: ./.github/workflows/run_tests.yml
+
   publish:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    needs: [tests]
     steps:
       - uses: actions/checkout@v2
+      - run: cargo --version
       - run: cargo test
       - run: cargo publish
         working-directory: ./camo
