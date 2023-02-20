@@ -6,13 +6,13 @@ on:
 
 jobs:
   audit:
-  runs-on: ubuntu-22.04
-  steps:
-    - uses: actions/checkout@v2
-    - run: cargo --version
-    - run: cargo install cargo-audit --locked --version ^0.17 --features vendored-openssl
-    - run: cargo audit
-      continue-on-error: true
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v2
+      - run: cargo --version
+      - run: cargo install cargo-audit --locked --version ^0.17 --features vendored-openssl
+      - run: cargo audit
+        continue-on-error: true
 
   outdated:
     runs-on: ubuntu-22.04
