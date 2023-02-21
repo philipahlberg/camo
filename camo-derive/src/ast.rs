@@ -4,6 +4,7 @@ use quote::quote;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Item {
     Struct(Struct),
+    Enum(Enum),
 }
 
 impl Item {
@@ -13,6 +14,12 @@ impl Item {
                 let ty = ty.into_token_stream();
                 quote! {
                     ::camo::Item::Struct(#ty)
+                }
+            }
+            Item::Enum(ty) => {
+                let ty = ty.into_token_stream();
+                quote! {
+                    ::camo::Item::Enum(#ty)
                 }
             }
         }
@@ -58,6 +65,56 @@ impl Field {
             ::camo::Field {
                 name: #name,
                 ty: #ty,
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Enum {
+    pub name: String,
+    pub variants: Vec<Variant>,
+}
+
+impl Enum {
+    fn into_token_stream(self) -> TokenStream {
+        let name = self.name;
+        let variants: Vec<_> = self
+            .variants
+            .into_iter()
+            .map(|variant| variant.into_token_stream())
+            .collect();
+
+        quote! {
+            ::camo::Enum {
+                name: #name,
+                variants: Vec::from([
+                    #(#variants),*
+                ]),
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Variant {
+    pub name: String,
+    pub content: Option<Type>,
+}
+
+impl Variant {
+    fn into_token_stream(self) -> TokenStream {
+        let name = self.name;
+        let content = if let Some(ty) = self.content {
+            let ty = ty.into_token_stream();
+            quote! {::core::option::Option::Some(#ty)}
+        } else {
+            quote! {::core::option::Option::None}
+        };
+        quote! {
+            ::camo::Variant {
+                name: #name,
+                content: #content,
             }
         }
     }

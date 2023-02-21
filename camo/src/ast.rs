@@ -3,6 +3,8 @@
 pub enum Item {
     /// A struct.
     Struct(Struct),
+    /// An enum.
+    Enum(Enum),
 }
 
 /// Represents a `struct` definition.
@@ -23,11 +25,31 @@ pub struct Field {
     pub ty: Type,
 }
 
+/// Represents an `enum` definition.
+#[derive(Debug, PartialEq)]
+pub struct Enum {
+    pub name: &'static str,
+    pub variants: Vec<Variant>,
+}
+
+/// A variant of an enum.
+#[derive(Debug, PartialEq)]
+pub struct Variant {
+    /// The name of the variant.
+    pub name: &'static str,
+    /// The content of the variant.
+    ///
+    /// This is `None` for unit variants.
+    pub content: Option<Type>,
+}
+
 /// Represents a type use, e. g. in a struct definition,
 /// function definition, or type alias.
 #[derive(Debug, PartialEq)]
 pub enum Type {
+    /// A builtin type (e.g. `char` or `u8`).
     Builtin(BuiltinType),
+    /// A path representing some type (e.g. `Foo` or `std::collections::HashMap`).
     Path(TypePath),
 }
 
@@ -46,6 +68,7 @@ impl<const N: usize> From<[PathSegment; N]> for TypePath {
     }
 }
 
+/// A path segment (e.g. `std` in `std::collections::HashMap`).
 #[derive(Debug, Clone, PartialEq)]
 pub struct PathSegment(pub &'static str);
 
@@ -69,112 +92,4 @@ pub enum BuiltinType {
     F64,
     Char,
     Str,
-}
-
-/// Describes how to represent the source type
-/// as a `Type` (type use value).
-pub trait IntoType {
-    fn into_type() -> Type;
-}
-
-impl IntoType for bool {
-    fn into_type() -> Type {
-        Type::Builtin(BuiltinType::Bool)
-    }
-}
-
-impl IntoType for u8 {
-    fn into_type() -> Type {
-        Type::Builtin(BuiltinType::U8)
-    }
-}
-
-impl IntoType for u16 {
-    fn into_type() -> Type {
-        Type::Builtin(BuiltinType::U16)
-    }
-}
-
-impl IntoType for u32 {
-    fn into_type() -> Type {
-        Type::Builtin(BuiltinType::U32)
-    }
-}
-
-impl IntoType for u64 {
-    fn into_type() -> Type {
-        Type::Builtin(BuiltinType::U64)
-    }
-}
-
-impl IntoType for u128 {
-    fn into_type() -> Type {
-        Type::Builtin(BuiltinType::U128)
-    }
-}
-
-impl IntoType for usize {
-    fn into_type() -> Type {
-        Type::Builtin(BuiltinType::Usize)
-    }
-}
-
-impl IntoType for i8 {
-    fn into_type() -> Type {
-        Type::Builtin(BuiltinType::I8)
-    }
-}
-
-impl IntoType for i16 {
-    fn into_type() -> Type {
-        Type::Builtin(BuiltinType::I16)
-    }
-}
-
-impl IntoType for i32 {
-    fn into_type() -> Type {
-        Type::Builtin(BuiltinType::I32)
-    }
-}
-
-impl IntoType for i64 {
-    fn into_type() -> Type {
-        Type::Builtin(BuiltinType::I64)
-    }
-}
-
-impl IntoType for i128 {
-    fn into_type() -> Type {
-        Type::Builtin(BuiltinType::I128)
-    }
-}
-
-impl IntoType for isize {
-    fn into_type() -> Type {
-        Type::Builtin(BuiltinType::Isize)
-    }
-}
-
-impl IntoType for f32 {
-    fn into_type() -> Type {
-        Type::Builtin(BuiltinType::F32)
-    }
-}
-
-impl IntoType for f64 {
-    fn into_type() -> Type {
-        Type::Builtin(BuiltinType::F64)
-    }
-}
-
-impl IntoType for char {
-    fn into_type() -> Type {
-        Type::Builtin(BuiltinType::Char)
-    }
-}
-
-impl IntoType for str {
-    fn into_type() -> Type {
-        Type::Builtin(BuiltinType::Str)
-    }
 }

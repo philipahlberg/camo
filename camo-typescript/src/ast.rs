@@ -1,14 +1,35 @@
 use std::fmt;
 
+/// A top-level type definition.
 #[derive(Debug, PartialEq)]
 pub enum Definition {
+    /// An interface definition.
+    ///
+    /// Example:
+    ///
+    /// ```ts
+    /// interface Foo {
+    ///     value: number;
+    /// }
+    /// ```
     Interface(Interface),
+    /// A type definition consisting of multiple cases.
+    ///
+    /// Example:
+    /// ```ts
+    /// type Primitive =
+    ///     | number
+    ///     | boolean
+    ///     | symbol;
+    /// ```
+    UnionType(UnionType),
 }
 
 impl From<camo::Item> for Definition {
     fn from(value: camo::Item) -> Self {
         match value {
             camo::Item::Struct(s) => Definition::Interface(Interface::from(s)),
+            camo::Item::Enum(ty) => Definition::UnionType(UnionType::from(ty)),
         }
     }
 }
@@ -17,6 +38,7 @@ impl fmt::Display for Definition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Definition::Interface(ty) => write!(f, "{}", ty),
+            Definition::UnionType(ty) => write!(f, "{}", ty),
         }
     }
 }
@@ -60,13 +82,13 @@ impl fmt::Display for Interface {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "interface {} {{", self.name)?;
         for field in &self.fields {
-            write!(f, "\t{}", field)?;
+            writeln!(f, "\t{}", field)?;
         }
         writeln!(f, "}}")
     }
 }
 
-/// Represents an `interface` field.
+/// A field in e.g. an `interface` or a record literal type.
 #[derive(Debug, PartialEq)]
 pub struct Field {
     /// The name of the field.
@@ -91,25 +113,54 @@ impl From<camo::Field> for Field {
     }
 }
 
-// fn snake_to_camel_case(field: &str) -> String {
-//     let mut result = String::new();
-//     let mut capitalize = false;
-//     for ch in field.chars() {
-//         if ch == '_' {
-//             capitalize = true;
-//         } else if capitalize {
-//             result.push(ch.to_ascii_uppercase());
-//             capitalize = false;
-//         } else {
-//             result.push(ch);
-//         }
-//     }
-//     result
-// }
-
 impl fmt::Display for Field {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{name}: {ty};", name = self.name, ty = self.ty)
+        write!(f, "{name}: {ty};", name = self.name, ty = self.ty)
+    }
+}
+
+/// A type with multiple cases.
+#[derive(Debug, PartialEq)]
+pub struct UnionType {
+    pub name: &'static str,
+    pub variants: Vec<Variant>,
+}
+
+impl From<camo::Enum> for UnionType {
+    fn from(value: camo::Enum) -> Self {
+        Self {
+            name: value.name,
+            variants: value.variants.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl fmt::Display for UnionType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "type {} =", self.name)?;
+        for variant in &self.variants {
+            write!(f, "\n\t| {}", variant)?;
+        }
+        writeln!(f, ";")
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Variant(Type);
+
+impl From<camo::Variant> for Variant {
+    fn from(value: camo::Variant) -> Self {
+        match value.content {
+            Some(camo::Type::Builtin(ty)) => Variant(Type::Builtin(ty.into())),
+            Some(camo::Type::Path(ty)) => Variant(Type::Path(ty.into())),
+            None => Variant(Type::Literal(LiteralType::String(value.name))),
+        }
+    }
+}
+
+impl fmt::Display for Variant {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -119,6 +170,8 @@ impl fmt::Display for Field {
 pub enum Type {
     Builtin(BuiltinType),
     Path(TypePath),
+    Object(ObjectType),
+    Literal(LiteralType),
 }
 
 impl From<camo::Type> for Type {
@@ -135,6 +188,8 @@ impl fmt::Display for Type {
         match self {
             Type::Builtin(ty) => write!(f, "{}", ty),
             Type::Path(ty) => write!(f, "{}", ty),
+            Type::Object(ty) => write!(f, "{}", ty),
+            Type::Literal(ty) => write!(f, "\"{}\"", ty),
         }
     }
 }
@@ -183,10 +238,17 @@ impl fmt::Display for BuiltinType {
     }
 }
 
-/// The name of a type declared elsewhere.
+/// The name of a type.
+///
+/// Example:
+///
+/// ```ts
+/// const x: types.X = { /* ... */}
+/// //       ^^^^^^^
+/// ```
 #[derive(Debug, PartialEq)]
 pub struct TypePath {
-    /// The name of the type.
+    /// The segments of the type name.
     pub segments: Vec<PathSegment>,
 }
 
@@ -211,6 +273,7 @@ impl fmt::Display for TypePath {
     }
 }
 
+/// A segment of a type path.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PathSegment(&'static str);
 
@@ -229,5 +292,37 @@ impl From<camo::PathSegment> for PathSegment {
 impl fmt::Display for PathSegment {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+/// An object type.
+#[derive(Debug, PartialEq)]
+pub struct ObjectType {
+    /// The fields of the object type.
+    pub fields: Vec<Field>,
+}
+
+impl fmt::Display for ObjectType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "{{")?;
+        for field in &self.fields {
+            write!(f, " {}", field)?;
+        }
+        writeln!(f, " }}")
+    }
+}
+
+/// A literal type.
+#[derive(Debug, PartialEq)]
+pub enum LiteralType {
+    /// A string literal type.
+    String(&'static str),
+}
+
+impl fmt::Display for LiteralType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LiteralType::String(s) => write!(f, "{}", s),
+        }
     }
 }

@@ -19,8 +19,16 @@ struct Bar {
     field_five: Foo,
 }
 
+#[derive(Camo, Debug)]
+enum FooOrBar {
+    Foo(Foo),
+    Bar(Bar),
+    Num(usize),
+    Simple,
+}
+
 fn main() -> std::result::Result<(), std::io::Error> {
-    let types: Vec<Definition> = export! { Foo, Bar };
+    let types: Vec<Definition> = export! { Foo, Bar, FooOrBar };
 
     let mut file = File::create("types.ts")?;
 

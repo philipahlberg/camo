@@ -9,3 +9,9 @@ interface Bar {
 	field_five: Foo;
 }
 
+type FooOrBar =
+	| Foo
+	| Bar
+	| number
+	| "Simple";
+
