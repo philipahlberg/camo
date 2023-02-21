@@ -17,13 +17,14 @@ pub struct Error {
 
 pub enum ErrorKind {
     Union,
+    UnitStruct,
     GenericBounds,
     Lifetimes,
     ConstGenerics,
     ExplicicitDiscriminant,
     EnumNamedFields,
     EnumMultipleUnnamedFields,
-    StructUnnamedFields,
+    StructMultipleUnnamedFields,
     FunctionTypes,
     ArrayTypes,
     Macros,
@@ -35,6 +36,7 @@ impl ErrorKind {
     pub fn message(&self) -> &'static str {
         match self {
             Self::Union => "`camo` does not support unions",
+            Self::UnitStruct => "`camo` does not support unit structs",
             Self::GenericBounds => "`camo` does not support generic bounds",
             Self::Lifetimes => "`camo` does not support lifetimes",
             Self::ConstGenerics => "`camo` does not support const generics",
@@ -43,7 +45,9 @@ impl ErrorKind {
             Self::EnumMultipleUnnamedFields => {
                 "`camo` does not support multiple unnamed fields in enums"
             }
-            Self::StructUnnamedFields => "`camo` does not support unnamed fields in structs",
+            Self::StructMultipleUnnamedFields => {
+                "`camo` does not support multiple unnamed fields in structs"
+            }
             Self::FunctionTypes => "`camo` does not support function types",
             Self::ArrayTypes => "`camo` does not support array types",
             Self::Macros => "`camo` does not support macros",
@@ -87,7 +91,7 @@ fn build_struct(name: Ident, generics: &Generics, data: &DataStruct) -> Result<a
     Ok(ast::Struct {
         name: name.to_string(),
         arguments: build_parameters(generics)?,
-        fields: build_fields(&data.fields)?,
+        content: build_fields(&data.fields)?,
     })
 }
 
@@ -117,26 +121,43 @@ fn build_parameters(generics: &Generics) -> Result<Vec<String>, Error> {
         .collect()
 }
 
-fn build_fields(fields: &Fields) -> Result<Vec<ast::Field>, Error> {
+fn build_fields(fields: &Fields) -> Result<ast::StructVariant, Error> {
     match fields {
         Fields::Named(ref fields) => {
             let fields: Result<_, _> = fields
                 .named
                 .iter()
                 .map(|field| {
-                    Ok(ast::Field {
+                    Ok(ast::NamedField {
                         name: field.ident.as_ref().expect("named field").to_string(),
                         ty: build_type(&field.ty)?,
                     })
                 })
                 .collect();
-            Ok(fields?)
+            Ok(ast::StructVariant::NamedFields(fields?))
         }
-        Fields::Unnamed(fields) => Err(Error {
-            kind: ErrorKind::StructUnnamedFields,
+        Fields::Unnamed(fields) => {
+            if fields.unnamed.len() > 1 {
+                return Err(Error {
+                    kind: ErrorKind::StructMultipleUnnamedFields,
+                    span: fields.span(),
+                });
+            }
+            if let Some(field) = fields.unnamed.first() {
+                Ok(ast::StructVariant::UnnamedField(ast::UnnamedField {
+                    ty: build_type(&field.ty)?,
+                }))
+            } else {
+                Err(Error {
+                    kind: ErrorKind::UnitStruct,
+                    span: fields.span(),
+                })
+            }
+        }
+        Fields::Unit => Err(Error {
+            kind: ErrorKind::UnitStruct,
             span: fields.span(),
         }),
-        Fields::Unit => Ok(Vec::new()),
     }
 }
 

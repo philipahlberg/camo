@@ -16,15 +16,30 @@ pub struct Struct {
     pub name: &'static str,
     /// The generic arguments of the struct.
     pub arguments: Vec<&'static str>,
-    /// The fields of the struct.
-    pub fields: Vec<Field>,
+    /// The content of the struct.
+    pub content: StructVariant,
+}
+
+/// A list of fields.
+/// The fields are either all named or all unnamed.
+#[derive(Debug, Clone, PartialEq)]
+pub enum StructVariant {
+    NamedFields(Vec<NamedField>),
+    UnnamedField(UnnamedField),
 }
 
 /// Represents a named `struct` field.
 #[derive(Debug, Clone, PartialEq)]
-pub struct Field {
+pub struct NamedField {
     /// The name of the field.
     pub name: &'static str,
+    /// The type of the field.
+    pub ty: Type,
+}
+
+/// Represents a named `struct` field.
+#[derive(Debug, Clone, PartialEq)]
+pub struct UnnamedField {
     /// The type of the field.
     pub ty: Type,
 }

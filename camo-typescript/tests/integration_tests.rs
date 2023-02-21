@@ -166,7 +166,7 @@ fn supports_enum() {
 
     assert_eq!(
         foo,
-        Definition::UnionType(UnionType {
+        Definition::Type(camo_typescript::TypeDefinition::Union(UnionType {
             name: "Foo",
             parameters: Vec::from(["T"]),
             variants: Vec::from([
@@ -191,7 +191,7 @@ fn supports_enum() {
                     }])
                 })),
             ]),
-        }),
+        })),
     );
 }
 

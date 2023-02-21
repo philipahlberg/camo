@@ -1,5 +1,5 @@
 use camo_derive::Camo;
-use camo::{Camo as _, Item, Struct, Field, Type, TypePath, PathSegment};
+use camo::{Camo as _, Item, Struct, StructVariant, NamedField, Type, TypePath, PathSegment};
 
 #[derive(Camo)]
 struct Foo<T> {
@@ -15,15 +15,17 @@ fn main() {
         Item::Struct(Struct {
             name: "Foo",
             arguments: Vec::from(["T"]),
-            fields: Vec::from([
-                Field {
-                    name: "foo",
-                    ty: Type::Path(TypePath::from([PathSegment {
-                        name: "T",
-                        arguments: Vec::new(),
-                    }])),
-                },
-            ])
-        })
+            content: StructVariant::NamedFields(
+                Vec::from([
+                    NamedField {
+                        name: "foo",
+                        ty: Type::Path(TypePath::from([PathSegment {
+                            name: "T",
+                            arguments: Vec::new(),
+                        }])),
+                    },
+                ])
+                )
+        }),
     );
 }

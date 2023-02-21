@@ -6,6 +6,7 @@ fn tests() {
     cases.pass("tests/cases/struct.rs");
     cases.pass("tests/cases/enum.rs");
     cases.pass("tests/cases/generics.rs");
+    cases.pass("tests/cases/newtype.rs");
     cases.compile_fail("tests/cases/bounded_generics.rs");
     cases.compile_fail("tests/cases/union.rs");
     cases.compile_fail("tests/cases/lifetimes.rs");

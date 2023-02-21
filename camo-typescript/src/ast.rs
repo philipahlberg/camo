@@ -13,23 +13,26 @@ pub enum Definition {
     /// }
     /// ```
     Interface(Interface),
-    /// A type definition consisting of multiple cases.
-    ///
-    /// Example:
-    /// ```ts
-    /// type Primitive =
-    ///     | number
-    ///     | boolean
-    ///     | symbol;
-    /// ```
-    UnionType(UnionType),
+    Type(TypeDefinition),
 }
 
 impl From<camo::Item> for Definition {
     fn from(value: camo::Item) -> Self {
         match value {
-            camo::Item::Struct(s) => Definition::Interface(Interface::from(s)),
-            camo::Item::Enum(ty) => Definition::UnionType(UnionType::from(ty)),
+            camo::Item::Struct(s) => match s.content {
+                camo::StructVariant::NamedFields(fields) => Definition::Interface(Interface {
+                    name: s.name,
+                    parameters: s.arguments,
+                    fields: fields.into_iter().map(Into::into).collect(),
+                }),
+                camo::StructVariant::UnnamedField(field) => {
+                    Definition::Type(TypeDefinition::Alias(AliasType {
+                        name: s.name,
+                        ty: Type::from(field.ty),
+                    }))
+                }
+            },
+            camo::Item::Enum(ty) => Definition::Type(TypeDefinition::Union(UnionType::from(ty))),
         }
     }
 }
@@ -38,7 +41,7 @@ impl fmt::Display for Definition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Definition::Interface(ty) => write!(f, "{}", ty),
-            Definition::UnionType(ty) => write!(f, "{}", ty),
+            Definition::Type(ty) => write!(f, "{}", ty),
         }
     }
 }
@@ -52,16 +55,6 @@ pub struct Interface {
     pub parameters: Vec<&'static str>,
     /// The fields of the interface.
     pub fields: Vec<Field>,
-}
-
-impl From<camo::Struct> for Interface {
-    fn from(structure: camo::Struct) -> Self {
-        Self {
-            name: structure.name,
-            parameters: structure.arguments,
-            fields: structure.fields.into_iter().map(Field::from).collect(),
-        }
-    }
 }
 
 impl fmt::Display for Interface {
@@ -91,8 +84,8 @@ pub struct Field {
     pub ty: Type,
 }
 
-impl From<camo::Field> for Field {
-    fn from(field: camo::Field) -> Self {
+impl From<camo::NamedField> for Field {
+    fn from(field: camo::NamedField) -> Self {
         Self {
             name: field.name,
             ty: Type::from(field.ty),
@@ -103,6 +96,49 @@ impl From<camo::Field> for Field {
 impl fmt::Display for Field {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{name}: {ty};", name = self.name, ty = self.ty)
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum TypeDefinition {
+    /// A type definition that aliases some type.
+    ///
+    /// Example:
+    /// ```ts
+    /// type UserId = string;
+    /// ```
+    Alias(AliasType),
+
+    /// A type definition consisting of multiple cases.
+    ///
+    /// Example:
+    /// ```ts
+    /// type Primitive =
+    ///     | number
+    ///     | boolean
+    ///     | symbol;
+    /// ```
+    Union(UnionType),
+}
+
+impl fmt::Display for TypeDefinition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TypeDefinition::Alias(ty) => write!(f, "{}", ty),
+            TypeDefinition::Union(ty) => write!(f, "{}", ty),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct AliasType {
+    pub name: &'static str,
+    pub ty: Type,
+}
+
+impl fmt::Display for AliasType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "type {} = {};", self.name, self.ty)
     }
 }
 

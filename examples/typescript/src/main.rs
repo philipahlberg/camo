@@ -28,6 +28,9 @@ enum FooOrBar<T> {
     Generic(T),
 }
 
+#[derive(Camo, Debug)]
+struct New(i32);
+
 fn main() -> std::result::Result<(), std::io::Error> {
     let mut file = File::create("types.ts")?;
 
@@ -36,6 +39,7 @@ fn main() -> std::result::Result<(), std::io::Error> {
         Foo::camo().into(),
         Bar::camo().into(),
         FooOrBar::<T>::camo().into(),
+        New::camo().into(),
     ];
 
     for ty in types {

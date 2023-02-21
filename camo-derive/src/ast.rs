@@ -30,18 +30,14 @@ impl Item {
 pub struct Struct {
     pub name: String,
     pub arguments: Vec<String>,
-    pub fields: Vec<Field>,
+    pub content: StructVariant,
 }
 
 impl Struct {
     pub fn into_token_stream(self) -> TokenStream {
         let name = self.name;
         let arguments = self.arguments;
-        let fields: Vec<_> = self
-            .fields
-            .into_iter()
-            .map(|field| field.into_token_stream())
-            .collect();
+        let content = self.content.into_token_stream();
 
         quote! {
             ::camo::Struct {
@@ -49,27 +45,73 @@ impl Struct {
                 arguments: Vec::from([
                     #(#arguments),*
                 ]),
-                fields: Vec::from([
-                    #(#fields),*
-                ]),
+                content: #content,
             }
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Field {
+pub enum StructVariant {
+    NamedFields(Vec<NamedField>),
+    UnnamedField(UnnamedField),
+}
+
+impl StructVariant {
+    pub fn into_token_stream(self) -> TokenStream {
+        match self {
+            StructVariant::NamedFields(fields) => {
+                let fields: Vec<_> = fields
+                    .into_iter()
+                    .map(|field| field.into_token_stream())
+                    .collect();
+                quote! {
+                    ::camo::StructVariant::NamedFields(
+                        Vec::from([
+                            #(#fields),*
+                        ])
+                    )
+                }
+            }
+            StructVariant::UnnamedField(field) => {
+                let field = field.into_token_stream();
+                quote! {
+                    ::camo::StructVariant::UnnamedField(#field)
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct NamedField {
     pub name: String,
     pub ty: Type,
 }
 
-impl Field {
+impl NamedField {
     pub fn into_token_stream(self) -> TokenStream {
         let name = self.name;
         let ty = self.ty.into_token_stream();
         quote! {
-            ::camo::Field {
+            ::camo::NamedField {
                 name: #name,
+                ty: #ty,
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct UnnamedField {
+    pub ty: Type,
+}
+
+impl UnnamedField {
+    pub fn into_token_stream(self) -> TokenStream {
+        let ty = self.ty.into_token_stream();
+        quote! {
+            ::camo::UnnamedField {
                 ty: #ty,
             }
         }
