@@ -15,7 +15,7 @@ struct Foo {
 
 #[derive(Camo, Debug)]
 struct Bar {
-    field_four: usize,
+    field_four: Vec<usize>,
     field_five: Foo,
 }
 

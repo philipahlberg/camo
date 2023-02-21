@@ -48,6 +48,8 @@ impl fmt::Display for Definition {
 pub struct Interface {
     /// The name of the interface.
     pub name: &'static str,
+    /// The generic parameters of the interface.
+    pub parameters: Vec<&'static str>,
     /// The fields of the interface.
     pub fields: Vec<Field>,
 }
@@ -56,6 +58,7 @@ impl From<camo::Struct> for Interface {
     fn from(structure: camo::Struct) -> Self {
         Self {
             name: structure.name,
+            parameters: structure.arguments,
             fields: structure.fields.into_iter().map(Field::from).collect(),
         }
     }
@@ -63,7 +66,15 @@ impl From<camo::Struct> for Interface {
 
 impl fmt::Display for Interface {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "interface {} {{", self.name)?;
+        write!(f, "interface {}", self.name)?;
+        if !self.parameters.is_empty() {
+            write!(f, "<")?;
+            for parameter in &self.parameters {
+                write!(f, "{}", parameter)?;
+            }
+            write!(f, ">")?;
+        }
+        writeln!(f, " {{")?;
         for field in &self.fields {
             writeln!(f, "\t{}", field)?;
         }
@@ -98,7 +109,11 @@ impl fmt::Display for Field {
 /// A type with multiple cases.
 #[derive(Debug, PartialEq)]
 pub struct UnionType {
+    /// The name of the union type.
     pub name: &'static str,
+    /// The generic parameters of the union type.
+    pub parameters: Vec<&'static str>,
+    /// The variants of the union type.
     pub variants: Vec<Variant>,
 }
 
@@ -106,6 +121,7 @@ impl From<camo::Enum> for UnionType {
     fn from(value: camo::Enum) -> Self {
         Self {
             name: value.name,
+            parameters: value.arguments,
             variants: value.variants.into_iter().map(Into::into).collect(),
         }
     }
@@ -113,7 +129,15 @@ impl From<camo::Enum> for UnionType {
 
 impl fmt::Display for UnionType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "type {} =", self.name)?;
+        write!(f, "type {}", self.name)?;
+        if !self.parameters.is_empty() {
+            write!(f, "<")?;
+            for parameter in &self.parameters {
+                write!(f, "{}", parameter)?;
+            }
+            write!(f, ">")?;
+        }
+        write!(f, " =")?;
         for variant in &self.variants {
             write!(f, "\n\t| {}", variant)?;
         }
@@ -122,12 +146,15 @@ impl fmt::Display for UnionType {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Variant(Type);
+pub struct Variant(pub Type);
 
 impl From<camo::Variant> for Variant {
     fn from(value: camo::Variant) -> Self {
         match value.content {
-            Some(camo::Type::Path(ty)) => Variant(Type::Path(ty.into())),
+            Some(camo::Type::Path(ty)) => match camo::BuiltinType::try_from(ty) {
+                Ok(ty) => Variant(Type::Builtin(ty.into())),
+                Err(ty) => Variant(Type::Path(ty.into())),
+            },
             None => Variant(Type::Literal(LiteralType::String(value.name))),
         }
     }
@@ -147,6 +174,7 @@ pub enum Type {
     Path(TypePath),
     Object(ObjectType),
     Literal(LiteralType),
+    Array(Box<Type>),
 }
 
 impl From<camo::Type> for Type {
@@ -156,18 +184,15 @@ impl From<camo::Type> for Type {
                 Ok(ty) => Type::Builtin(BuiltinType::from(ty)),
                 Err(ty) => {
                     if let Some(s) = ty.segments.first() {
-                        if ty.segments.len() == 1 && s.arguments.is_empty() {
-                            match s.name {
-                                "String" => {
-                                    return Type::Path(TypePath {
-                                        segments: Vec::from([PathSegment {
-                                            name: "string",
-                                            arguments: Vec::new(),
-                                        }]),
-                                    })
-                                }
-                                _ => return Type::Path(TypePath::from(ty)),
+                        match s.name {
+                            "String" => {
+                                return Type::Builtin(BuiltinType::String);
                             }
+                            "Vec" => {
+                                let component_ty = s.arguments.first().unwrap().clone();
+                                return Type::Array(Box::new(Type::from(component_ty)));
+                            }
+                            _ => return Type::Path(TypePath::from(ty)),
                         }
                     }
                     Type::Path(TypePath::from(ty))
@@ -184,6 +209,7 @@ impl fmt::Display for Type {
             Type::Path(ty) => write!(f, "{}", ty),
             Type::Object(ty) => write!(f, "{}", ty),
             Type::Literal(ty) => write!(f, "\"{}\"", ty),
+            Type::Array(ty) => write!(f, "{}[]", ty),
         }
     }
 }

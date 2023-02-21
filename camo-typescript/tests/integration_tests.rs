@@ -1,12 +1,34 @@
 #![allow(unused)]
 
 use camo::Camo as _;
-use camo_typescript::{BuiltinType, Definition, Field, Interface, Type};
+use camo_derive::Camo;
+use camo_typescript::{
+    BuiltinType, Definition, Field, Interface, LiteralType, PathSegment, Type, TypePath, UnionType,
+    Variant,
+};
+
+#[test]
+fn implements_from() {
+    #[derive(Camo)]
+    struct Foo {
+        foo: i32,
+    }
+
+    assert_eq!(
+        Definition::from(Foo::camo()),
+        Definition::Interface(Interface {
+            name: "Foo",
+            parameters: Vec::new(),
+            fields: vec![Field {
+                name: "foo",
+                ty: Type::Builtin(BuiltinType::Number)
+            },],
+        },)
+    );
+}
 
 #[test]
 fn supports_booleans() {
-    use camo_derive::Camo;
-
     #[derive(Camo)]
     struct Foo {
         bar: bool,
@@ -18,6 +40,7 @@ fn supports_booleans() {
         foo,
         Definition::Interface(Interface {
             name: "Foo",
+            parameters: Vec::new(),
             fields: vec![Field {
                 name: "bar",
                 ty: Type::Builtin(BuiltinType::Boolean)
@@ -28,8 +51,6 @@ fn supports_booleans() {
 
 #[test]
 fn supports_numbers() {
-    use camo_derive::Camo;
-
     #[derive(Camo)]
     struct Foo {
         foo: u32,
@@ -43,6 +64,7 @@ fn supports_numbers() {
         foo,
         Definition::Interface(Interface {
             name: "Foo",
+            parameters: Vec::new(),
             fields: vec![
                 Field {
                     name: "foo",
@@ -63,8 +85,6 @@ fn supports_numbers() {
 
 #[test]
 fn supports_chars() {
-    use camo_derive::Camo;
-
     #[derive(Camo)]
     struct Foo {
         foo: char,
@@ -76,6 +96,7 @@ fn supports_chars() {
         foo,
         Definition::Interface(Interface {
             name: "Foo",
+            parameters: Vec::new(),
             fields: vec![Field {
                 name: "foo",
                 ty: Type::Builtin(BuiltinType::String)
@@ -85,11 +106,102 @@ fn supports_chars() {
 }
 
 #[test]
-fn works_with_display() {
+fn supports_string() {
+    #[derive(Camo)]
+    struct Foo {
+        foo: String,
+    }
+
+    let foo: Definition = Foo::camo().into();
+
+    assert_eq!(
+        foo,
+        Definition::Interface(Interface {
+            name: "Foo",
+            parameters: Vec::new(),
+            fields: vec![Field {
+                name: "foo",
+                ty: Type::Builtin(BuiltinType::String),
+            }]
+        })
+    );
+}
+
+#[test]
+fn supports_vec() {
+    #[derive(Camo)]
+    struct Foo {
+        foo: Vec<u8>,
+    }
+
+    let foo: Definition = Foo::camo().into();
+
+    assert_eq!(
+        foo,
+        Definition::Interface(Interface {
+            name: "Foo",
+            parameters: Vec::new(),
+            fields: vec![Field {
+                name: "foo",
+                ty: Type::Array(Box::new(Type::Builtin(BuiltinType::Number),)),
+            }]
+        })
+    );
+}
+
+#[test]
+fn supports_enum() {
+    struct V;
+
+    #[derive(Camo)]
+    enum Foo<T> {
+        Zero,
+        One(bool),
+        Two(T),
+        Three(V),
+        Four(Vec<i32>),
+    }
+
+    let foo: Definition = Foo::<V>::camo().into();
+
+    assert_eq!(
+        foo,
+        Definition::UnionType(UnionType {
+            name: "Foo",
+            parameters: Vec::from(["T"]),
+            variants: Vec::from([
+                Variant(Type::Literal(LiteralType::String("Zero"))),
+                Variant(Type::Builtin(BuiltinType::Boolean)),
+                Variant(Type::Path(TypePath {
+                    segments: Vec::from([PathSegment {
+                        name: "T",
+                        arguments: Vec::new()
+                    }])
+                })),
+                Variant(Type::Path(TypePath {
+                    segments: Vec::from([PathSegment {
+                        name: "V",
+                        arguments: Vec::new()
+                    }])
+                })),
+                Variant(Type::Path(TypePath {
+                    segments: Vec::from([PathSegment {
+                        name: "Vec",
+                        arguments: Vec::from([Type::Builtin(BuiltinType::Number)])
+                    }])
+                })),
+            ]),
+        }),
+    );
+}
+
+#[test]
+fn display_interface() {
     use unindent::Unindent;
 
-    let interface = Interface {
+    let def = Interface {
         name: "Foo",
+        parameters: Vec::from(["K"]),
         fields: vec![
             Field {
                 name: "foo",
@@ -97,19 +209,24 @@ fn works_with_display() {
             },
             Field {
                 name: "bar",
-                ty: Type::Builtin(BuiltinType::Boolean),
+                ty: Type::Path(TypePath {
+                    segments: Vec::from([PathSegment {
+                        name: "K",
+                        arguments: Vec::new(),
+                    }]),
+                }),
             },
         ],
     };
 
-    let result = format!("{}", interface);
+    let result = format!("{}", def);
 
     assert_eq!(
         result,
         "
-        interface Foo {
+        interface Foo<K> {
         \tfoo: number;
-        \tbar: boolean;
+        \tbar: K;
         }
         "
         .unindent()
@@ -117,29 +234,34 @@ fn works_with_display() {
 }
 
 #[test]
-fn works_with_export() {
-    use camo_derive::Camo;
+fn display_enum() {
+    use unindent::Unindent;
 
-    #[derive(Camo)]
-    struct Foo {
-        foo: i32,
-        bar: bool,
-    }
+    let def = UnionType {
+        name: "Foo",
+        parameters: Vec::from(["T"]),
+        variants: Vec::from([
+            Variant(Type::Builtin(BuiltinType::Number)),
+            Variant(Type::Builtin(BuiltinType::Boolean)),
+            Variant(Type::Path(TypePath {
+                segments: Vec::from([PathSegment {
+                    name: "T",
+                    arguments: Vec::new(),
+                }]),
+            })),
+        ]),
+    };
+
+    let result = format!("{}", def);
 
     assert_eq!(
-        Definition::from(Foo::camo()),
-        Definition::Interface(Interface {
-            name: "Foo",
-            fields: vec![
-                Field {
-                    name: "foo",
-                    ty: Type::Builtin(BuiltinType::Number)
-                },
-                Field {
-                    name: "bar",
-                    ty: Type::Builtin(BuiltinType::Boolean)
-                },
-            ],
-        },)
+        result,
+        "
+        type Foo<T> =
+        \t| number
+        \t| boolean
+        \t| T;
+        "
+        .unindent()
     );
 }
