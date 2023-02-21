@@ -2,7 +2,7 @@
 
 use camo::{export, Camo as _};
 use camo_derive::Camo;
-use camo_typescript::Interface;
+use camo_typescript::Definition;
 use std::fs::File;
 use std::io::Write as _;
 
@@ -16,11 +16,11 @@ struct Foo {
 #[derive(Camo, Debug)]
 struct Bar {
     field_four: usize,
-    field_five: isize,
+    field_five: Foo,
 }
 
 fn main() -> std::result::Result<(), std::io::Error> {
-    let types: Vec<Interface> = export! { Foo, Bar };
+    let types: Vec<Definition> = export! { Foo, Bar };
 
     let mut file = File::create("types.ts")?;
 

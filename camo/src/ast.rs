@@ -1,58 +1,57 @@
+/// Represents an item.
+#[derive(Debug, PartialEq)]
+pub enum Item {
+    /// A struct.
+    Struct(Struct),
+}
+
 /// Represents a `struct` definition.
 #[derive(Debug, PartialEq)]
 pub struct Struct {
     /// The name of the struct.
-    pub name: String,
+    pub name: &'static str,
     /// The fields of the struct.
     pub fields: Vec<Field>,
-}
-
-impl Struct {
-    /// Create a new struct with the given name
-    /// and an empty list of fields.
-    pub fn new(name: &str) -> Self {
-        Self {
-            name: String::from(name),
-            fields: Vec::new(),
-        }
-    }
-
-    /// Add a field to the struct.
-    pub fn field(mut self, field: Field) -> Self {
-        self.fields.push(field);
-        self
-    }
 }
 
 /// Represents a named `struct` field.
 #[derive(Debug, PartialEq)]
 pub struct Field {
     /// The name of the field.
-    pub name: String,
+    pub name: &'static str,
     /// The type of the field.
     pub ty: Type,
-}
-
-impl Field {
-    /// Create a new field with the given name and type.
-    pub fn new(name: &str, ty: Type) -> Self {
-        Self {
-            name: String::from(name),
-            ty,
-        }
-    }
 }
 
 /// Represents a type use, e. g. in a struct definition,
 /// function definition, or type alias.
 #[derive(Debug, PartialEq)]
 pub enum Type {
-    Builtin(Builtin),
+    Builtin(BuiltinType),
+    Path(TypePath),
 }
+
+/// The name of a type (struct or enum) declared elsewhere.
+#[derive(Debug, PartialEq)]
+pub struct TypePath {
+    /// The name of the type.
+    pub segments: Vec<PathSegment>,
+}
+
+impl<const N: usize> From<[PathSegment; N]> for TypePath {
+    fn from(value: [PathSegment; N]) -> Self {
+        Self {
+            segments: value.to_vec(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PathSegment(pub &'static str);
 
 /// The built-in types.
 #[derive(Debug, PartialEq)]
-pub enum Builtin {
+pub enum BuiltinType {
     Bool,
     U8,
     U16,
@@ -80,102 +79,102 @@ pub trait IntoType {
 
 impl IntoType for bool {
     fn into_type() -> Type {
-        Type::Builtin(Builtin::Bool)
+        Type::Builtin(BuiltinType::Bool)
     }
 }
 
 impl IntoType for u8 {
     fn into_type() -> Type {
-        Type::Builtin(Builtin::U8)
+        Type::Builtin(BuiltinType::U8)
     }
 }
 
 impl IntoType for u16 {
     fn into_type() -> Type {
-        Type::Builtin(Builtin::U16)
+        Type::Builtin(BuiltinType::U16)
     }
 }
 
 impl IntoType for u32 {
     fn into_type() -> Type {
-        Type::Builtin(Builtin::U32)
+        Type::Builtin(BuiltinType::U32)
     }
 }
 
 impl IntoType for u64 {
     fn into_type() -> Type {
-        Type::Builtin(Builtin::U64)
+        Type::Builtin(BuiltinType::U64)
     }
 }
 
 impl IntoType for u128 {
     fn into_type() -> Type {
-        Type::Builtin(Builtin::U128)
+        Type::Builtin(BuiltinType::U128)
     }
 }
 
 impl IntoType for usize {
     fn into_type() -> Type {
-        Type::Builtin(Builtin::Usize)
+        Type::Builtin(BuiltinType::Usize)
     }
 }
 
 impl IntoType for i8 {
     fn into_type() -> Type {
-        Type::Builtin(Builtin::I8)
+        Type::Builtin(BuiltinType::I8)
     }
 }
 
 impl IntoType for i16 {
     fn into_type() -> Type {
-        Type::Builtin(Builtin::I16)
+        Type::Builtin(BuiltinType::I16)
     }
 }
 
 impl IntoType for i32 {
     fn into_type() -> Type {
-        Type::Builtin(Builtin::I32)
+        Type::Builtin(BuiltinType::I32)
     }
 }
 
 impl IntoType for i64 {
     fn into_type() -> Type {
-        Type::Builtin(Builtin::I64)
+        Type::Builtin(BuiltinType::I64)
     }
 }
 
 impl IntoType for i128 {
     fn into_type() -> Type {
-        Type::Builtin(Builtin::I128)
+        Type::Builtin(BuiltinType::I128)
     }
 }
 
 impl IntoType for isize {
     fn into_type() -> Type {
-        Type::Builtin(Builtin::Isize)
+        Type::Builtin(BuiltinType::Isize)
     }
 }
 
 impl IntoType for f32 {
     fn into_type() -> Type {
-        Type::Builtin(Builtin::F32)
+        Type::Builtin(BuiltinType::F32)
     }
 }
 
 impl IntoType for f64 {
     fn into_type() -> Type {
-        Type::Builtin(Builtin::F64)
+        Type::Builtin(BuiltinType::F64)
     }
 }
 
 impl IntoType for char {
     fn into_type() -> Type {
-        Type::Builtin(Builtin::Char)
+        Type::Builtin(BuiltinType::Char)
     }
 }
 
 impl IntoType for str {
     fn into_type() -> Type {
-        Type::Builtin(Builtin::Str)
+        Type::Builtin(BuiltinType::Str)
     }
 }

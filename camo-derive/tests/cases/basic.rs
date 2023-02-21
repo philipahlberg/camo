@@ -1,4 +1,4 @@
-use camo::{Camo as _, Struct, Field, Type, Builtin};
+use camo::{Camo as _, Item, Struct, Field, Type, BuiltinType};
 use camo_derive::Camo;
 
 #[derive(Camo)]
@@ -13,9 +13,22 @@ fn main() {
 
     assert_eq!(
         foo,
-        Struct::new("Foo")
-            .field(Field::new("foo", Type::Builtin(Builtin::U32)))
-            .field(Field::new("bar", Type::Builtin(Builtin::Bool)))
-            .field(Field::new("baz", Type::Builtin(Builtin::Char)))
+        Item::Struct(Struct {
+            name: "Foo",
+            fields: Vec::from([
+                Field {
+                    name: "foo",
+                    ty: Type::Builtin(BuiltinType::U32),
+                },
+                Field {
+                    name: "bar",
+                    ty: Type::Builtin(BuiltinType::Bool),
+                },
+                Field {
+                    name: "baz",
+                    ty: Type::Builtin(BuiltinType::Char),
+                },
+            ])
+        })
     );
 }

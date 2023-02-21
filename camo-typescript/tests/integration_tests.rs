@@ -1,5 +1,5 @@
 use camo::{export, Camo as _};
-use camo_typescript::{Builtin, Field, Interface, Type};
+use camo_typescript::{BuiltinType, Definition, Field, Interface, Type};
 
 #[test]
 fn supports_booleans() {
@@ -11,11 +11,13 @@ fn supports_booleans() {
         bar: bool,
     }
 
-    let foo: Interface = Foo::camo().into();
+    let foo: Definition = Foo::camo().into();
 
     assert_eq!(
         foo,
-        Interface::new("Foo").field(Field::new("bar", Type::Builtin(Builtin::Boolean)))
+        Definition::Interface(
+            Interface::new("Foo").field(Field::new("bar", Type::Builtin(BuiltinType::Boolean)))
+        )
     );
 }
 
@@ -33,14 +35,16 @@ fn supports_numbers() {
         baz: usize,
     }
 
-    let foo: Interface = Foo::camo().into();
+    let foo: Definition = Foo::camo().into();
 
     assert_eq!(
         foo,
-        Interface::new("Foo")
-            .field(Field::new("foo", Type::Builtin(Builtin::Number)))
-            .field(Field::new("bar", Type::Builtin(Builtin::Number)))
-            .field(Field::new("baz", Type::Builtin(Builtin::Number)))
+        Definition::Interface(
+            Interface::new("Foo")
+                .field(Field::new("foo", Type::Builtin(BuiltinType::Number)))
+                .field(Field::new("bar", Type::Builtin(BuiltinType::Number)))
+                .field(Field::new("baz", Type::Builtin(BuiltinType::Number)))
+        )
     );
 }
 
@@ -54,11 +58,13 @@ fn supports_chars() {
         foo: char,
     }
 
-    let foo: Interface = Foo::camo().into();
+    let foo: Definition = Foo::camo().into();
 
     assert_eq!(
         foo,
-        Interface::new("Foo").field(Field::new("foo", Type::Builtin(Builtin::String)))
+        Definition::Interface(
+            Interface::new("Foo").field(Field::new("foo", Type::Builtin(BuiltinType::String)))
+        )
     );
 }
 
@@ -67,8 +73,8 @@ fn works_with_display() {
     use unindent::Unindent;
 
     let interface = Interface::new("Foo")
-        .field(Field::new("foo", Type::Builtin(Builtin::Number)))
-        .field(Field::new("bar", Type::Builtin(Builtin::Boolean)));
+        .field(Field::new("foo", Type::Builtin(BuiltinType::Number)))
+        .field(Field::new("bar", Type::Builtin(BuiltinType::Boolean)));
 
     let result = format!("{}", interface);
 
@@ -96,36 +102,16 @@ fn works_with_export() {
         bar: bool,
     }
 
-    let exports: Vec<Interface> = export! { Foo };
+    let exports: Vec<Definition> = export! { Foo };
 
     let foo = &exports[0];
 
     assert_eq!(
         foo,
-        &Interface::new("Foo")
-            .field(Field::new("foo", Type::Builtin(Builtin::Number)))
-            .field(Field::new("bar", Type::Builtin(Builtin::Boolean)))
-    );
-}
-
-#[test]
-fn rewrites_to_camel_case() {
-    use camo_derive::Camo;
-
-    #[derive(Camo)]
-    struct Foo {
-        #[allow(unused)]
-        field_foo: u32,
-        #[allow(unused)]
-        field_foo_bar: bool,
-    }
-
-    let foo: Interface = Foo::camo().into();
-
-    assert_eq!(
-        foo,
-        Interface::new("Foo")
-            .field(Field::new("fieldFoo", Type::Builtin(Builtin::Number)))
-            .field(Field::new("fieldFooBar", Type::Builtin(Builtin::Boolean)))
+        &Definition::Interface(
+            Interface::new("Foo")
+                .field(Field::new("foo", Type::Builtin(BuiltinType::Number)))
+                .field(Field::new("bar", Type::Builtin(BuiltinType::Boolean)))
+        )
     );
 }

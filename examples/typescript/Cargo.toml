@@ -1,5 +1,5 @@
 [package]
-name = "typescript"
+name = "example-typescript"
 version = "0.0.0"
 authors = ["philipahlberg <philipahlberg@gmail.com>"]
 edition = "2018"

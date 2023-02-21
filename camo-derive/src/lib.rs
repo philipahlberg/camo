@@ -11,6 +11,7 @@
 //! // ...
 //! ```
 
+mod ast;
 mod derive_camo;
 
 use derive_camo::derive_camo;

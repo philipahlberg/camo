@@ -19,4 +19,4 @@ camo = { version = "0.1", path = "../camo" }
 
 [dev-dependencies]
 camo-derive = { path = "../camo-derive" }
-unindent = "0.1"
+unindent = "0.2"
