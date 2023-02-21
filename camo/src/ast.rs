@@ -1,5 +1,7 @@
+use std::convert::TryFrom;
+
 /// Represents an item.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Item {
     /// A struct.
     Struct(Struct),
@@ -8,16 +10,18 @@ pub enum Item {
 }
 
 /// Represents a `struct` definition.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Struct {
     /// The name of the struct.
     pub name: &'static str,
+    /// The generic arguments of the struct.
+    pub arguments: Vec<&'static str>,
     /// The fields of the struct.
     pub fields: Vec<Field>,
 }
 
 /// Represents a named `struct` field.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Field {
     /// The name of the field.
     pub name: &'static str,
@@ -26,14 +30,18 @@ pub struct Field {
 }
 
 /// Represents an `enum` definition.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Enum {
+    /// The name of the enum.
     pub name: &'static str,
+    /// The generic arguments of the enum.
+    pub arguments: Vec<&'static str>,
+    /// The variants of the enum.
     pub variants: Vec<Variant>,
 }
 
 /// A variant of an enum.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Variant {
     /// The name of the variant.
     pub name: &'static str,
@@ -45,16 +53,14 @@ pub struct Variant {
 
 /// Represents a type use, e. g. in a struct definition,
 /// function definition, or type alias.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Type {
-    /// A builtin type (e.g. `char` or `u8`).
-    Builtin(BuiltinType),
     /// A path representing some type (e.g. `Foo` or `std::collections::HashMap`).
     Path(TypePath),
 }
 
 /// The name of a type (struct or enum) declared elsewhere.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TypePath {
     /// The name of the type.
     pub segments: Vec<PathSegment>,
@@ -70,10 +76,13 @@ impl<const N: usize> From<[PathSegment; N]> for TypePath {
 
 /// A path segment (e.g. `std` in `std::collections::HashMap`).
 #[derive(Debug, Clone, PartialEq)]
-pub struct PathSegment(pub &'static str);
+pub struct PathSegment {
+    pub name: &'static str,
+    pub arguments: Vec<Type>,
+}
 
 /// The built-in types.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum BuiltinType {
     Bool,
     U8,
@@ -91,5 +100,37 @@ pub enum BuiltinType {
     F32,
     F64,
     Char,
-    Str,
+}
+
+impl TryFrom<TypePath> for BuiltinType {
+    type Error = TypePath;
+
+    fn try_from(value: TypePath) -> Result<Self, Self::Error> {
+        if value.segments.len() != 1 {
+            return Err(value);
+        }
+        let segment = value.segments.first().unwrap();
+        if !segment.arguments.is_empty() {
+            return Err(value);
+        }
+        match segment.name {
+            "bool" => Ok(BuiltinType::Bool),
+            "u8" => Ok(BuiltinType::U8),
+            "u16" => Ok(BuiltinType::U16),
+            "u32" => Ok(BuiltinType::U32),
+            "u64" => Ok(BuiltinType::U64),
+            "u128" => Ok(BuiltinType::U128),
+            "usize" => Ok(BuiltinType::Usize),
+            "i8" => Ok(BuiltinType::I8),
+            "i16" => Ok(BuiltinType::I16),
+            "i32" => Ok(BuiltinType::I32),
+            "i64" => Ok(BuiltinType::I64),
+            "i128" => Ok(BuiltinType::I128),
+            "isize" => Ok(BuiltinType::Isize),
+            "f32" => Ok(BuiltinType::F32),
+            "f64" => Ok(BuiltinType::F64),
+            "char" => Ok(BuiltinType::Char),
+            _ => Err(value),
+        }
+    }
 }

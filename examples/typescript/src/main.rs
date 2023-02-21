@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use camo::{export, Camo as _};
+use camo::Camo as _;
 use camo_derive::Camo;
 use camo_typescript::Definition;
 use std::fs::File;
@@ -20,17 +20,23 @@ struct Bar {
 }
 
 #[derive(Camo, Debug)]
-enum FooOrBar {
+enum FooOrBar<T> {
     Foo(Foo),
     Bar(Bar),
     Num(usize),
     Simple,
+    Generic(T),
 }
 
 fn main() -> std::result::Result<(), std::io::Error> {
-    let types: Vec<Definition> = export! { Foo, Bar, FooOrBar };
-
     let mut file = File::create("types.ts")?;
+
+    struct T;
+    let types: &[Definition] = &[
+        Foo::camo().into(),
+        Bar::camo().into(),
+        FooOrBar::<T>::camo().into(),
+    ];
 
     for ty in types {
         writeln!(file, "{}", ty).unwrap();

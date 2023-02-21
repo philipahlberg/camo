@@ -1,0 +1,5 @@
+error: `camo` does not support macros
+ --> tests/cases/macros.rs:9:8
+  |
+9 |     f: foo!(),
+  |        ^^^

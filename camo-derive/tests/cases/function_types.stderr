@@ -1,0 +1,5 @@
+error: `camo` does not support function types
+ --> tests/cases/function_types.rs:5:8
+  |
+5 |     f: fn(i32) -> i32,
+  |        ^^

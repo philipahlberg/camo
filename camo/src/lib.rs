@@ -3,7 +3,8 @@
 
 mod ast;
 mod camo;
-mod export;
+#[cfg(test)]
+mod tests;
 
 pub use crate::ast::*;
 pub use crate::camo::*;

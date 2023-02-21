@@ -3,7 +3,10 @@ use quote::quote;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
-use syn::{Data, DataEnum, DataStruct, DeriveInput, Fields, Variant};
+use syn::{
+    Data, DataEnum, DataStruct, DeriveInput, Fields, GenericArgument, GenericParam, Generics,
+    PathArguments, Variant,
+};
 
 use crate::ast;
 
@@ -13,8 +16,10 @@ pub struct Error {
 }
 
 pub enum ErrorKind {
-    Generics,
     Union,
+    GenericBounds,
+    Lifetimes,
+    ConstGenerics,
     ExplicicitDiscriminant,
     EnumNamedFields,
     EnumMultipleUnnamedFields,
@@ -29,8 +34,10 @@ pub enum ErrorKind {
 impl ErrorKind {
     pub fn message(&self) -> &'static str {
         match self {
-            Self::Generics => "`camo` does not support generics",
             Self::Union => "`camo` does not support unions",
+            Self::GenericBounds => "`camo` does not support generic bounds",
+            Self::Lifetimes => "`camo` does not support lifetimes",
+            Self::ConstGenerics => "`camo` does not support const generics",
             Self::ExplicicitDiscriminant => "`camo` does not support explicit discriminants",
             Self::EnumNamedFields => "`camo` does not support named fields in enums",
             Self::EnumMultipleUnnamedFields => {
@@ -48,23 +55,16 @@ impl ErrorKind {
 
 pub fn derive_camo(input: DeriveInput) -> Result<TokenStream, Error> {
     let name = input.ident.clone();
-
-    if !input.generics.params.is_empty() {
-        return Err(Error {
-            kind: ErrorKind::Generics,
-            span: input.generics.span(),
-        });
-    }
-
-    build_impl(name, &input.data)
+    build_impl(name, &input.generics, &input.data)
 }
 
-fn build_impl(name: Ident, data: &Data) -> Result<TokenStream, Error> {
-    let tokens = build_item(name.clone(), data)?.into_token_stream();
+fn build_impl(name: Ident, generics: &Generics, data: &Data) -> Result<TokenStream, Error> {
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    let tokens = build_item(name.clone(), generics, data)?.into_token_stream();
 
     Ok(quote! {
         #[automatically_derived]
-        impl ::camo::Camo for #name {
+        impl #impl_generics ::camo::Camo for #name #ty_generics #where_clause {
             fn camo() -> ::camo::Item {
                 #tokens
             }
@@ -72,10 +72,10 @@ fn build_impl(name: Ident, data: &Data) -> Result<TokenStream, Error> {
     })
 }
 
-fn build_item(name: Ident, data: &Data) -> Result<ast::Item, Error> {
+fn build_item(name: Ident, generics: &Generics, data: &Data) -> Result<ast::Item, Error> {
     match data {
-        Data::Struct(data) => Ok(ast::Item::Struct(build_struct(name, data)?)),
-        Data::Enum(data) => Ok(ast::Item::Enum(build_enum(name, data)?)),
+        Data::Struct(data) => Ok(ast::Item::Struct(build_struct(name, generics, data)?)),
+        Data::Enum(data) => Ok(ast::Item::Enum(build_enum(name, generics, data)?)),
         Data::Union(data) => Err(Error {
             kind: ErrorKind::Union,
             span: data.union_token.span(),
@@ -83,11 +83,38 @@ fn build_item(name: Ident, data: &Data) -> Result<ast::Item, Error> {
     }
 }
 
-fn build_struct(name: Ident, data: &DataStruct) -> Result<ast::Struct, Error> {
+fn build_struct(name: Ident, generics: &Generics, data: &DataStruct) -> Result<ast::Struct, Error> {
     Ok(ast::Struct {
         name: name.to_string(),
+        arguments: build_parameters(generics)?,
         fields: build_fields(&data.fields)?,
     })
+}
+
+fn build_parameters(generics: &Generics) -> Result<Vec<String>, Error> {
+    generics
+        .params
+        .iter()
+        .map(|parameter| match parameter {
+            GenericParam::Type(ty) => {
+                if !ty.bounds.is_empty() {
+                    return Err(Error {
+                        kind: ErrorKind::GenericBounds,
+                        span: ty.bounds.span(),
+                    });
+                }
+                Ok(ty.ident.to_string())
+            }
+            GenericParam::Lifetime(lt) => Err(Error {
+                kind: ErrorKind::Lifetimes,
+                span: lt.span(),
+            }),
+            GenericParam::Const(c) => Err(Error {
+                kind: ErrorKind::ConstGenerics,
+                span: c.span(),
+            }),
+        })
+        .collect()
 }
 
 fn build_fields(fields: &Fields) -> Result<Vec<ast::Field>, Error> {
@@ -113,9 +140,10 @@ fn build_fields(fields: &Fields) -> Result<Vec<ast::Field>, Error> {
     }
 }
 
-fn build_enum(name: Ident, data: &DataEnum) -> Result<ast::Enum, Error> {
+fn build_enum(name: Ident, generics: &Generics, data: &DataEnum) -> Result<ast::Enum, Error> {
     Ok(ast::Enum {
         name: name.to_string(),
+        arguments: build_parameters(generics)?,
         variants: build_variants(&data.variants)?,
     })
 }
@@ -187,54 +215,21 @@ fn build_type(ty: &syn::Type) -> Result<ast::Type, Error> {
                 });
             }
 
-            for segment in &ty.path.segments {
-                if !segment.arguments.is_empty() {
-                    return Err(Error {
-                        kind: ErrorKind::Generics,
-                        span: ty.span(),
-                    });
-                }
-            }
+            let segments: Vec<_> = ty
+                .path
+                .segments
+                .iter()
+                .map(|segment| {
+                    Ok(ast::PathSegment {
+                        name: segment.ident.to_string(),
+                        arguments: build_type_arguments(&segment.arguments)?,
+                    })
+                })
+                .collect::<Result<_, _>>()?;
 
-            let builtin = if ty.path.segments.len() == 1 {
-                match ty.path.segments.first().unwrap().ident.to_string().as_str() {
-                    "bool" => Some(ast::BuiltinType::Bool),
-                    "u8" => Some(ast::BuiltinType::U8),
-                    "u16" => Some(ast::BuiltinType::U16),
-                    "u32" => Some(ast::BuiltinType::U32),
-                    "u64" => Some(ast::BuiltinType::U64),
-                    "u128" => Some(ast::BuiltinType::U128),
-                    "usize" => Some(ast::BuiltinType::Usize),
-                    "i8" => Some(ast::BuiltinType::I8),
-                    "i16" => Some(ast::BuiltinType::I16),
-                    "i32" => Some(ast::BuiltinType::I32),
-                    "i64" => Some(ast::BuiltinType::I64),
-                    "i128" => Some(ast::BuiltinType::I128),
-                    "isize" => Some(ast::BuiltinType::Isize),
-                    "f32" => Some(ast::BuiltinType::F32),
-                    "f64" => Some(ast::BuiltinType::F64),
-                    "char" => Some(ast::BuiltinType::Char),
-                    "str" => Some(ast::BuiltinType::Str),
-                    _ => None,
-                }
-            } else {
-                None
-            };
+            let path = ast::TypePath { segments };
 
-            if let Some(builtin) = builtin {
-                Ok(ast::Type::Builtin(builtin))
-            } else {
-                let segments = ty
-                    .path
-                    .segments
-                    .iter()
-                    .map(|segment| ast::PathSegment(segment.ident.to_string()))
-                    .collect();
-
-                let path = ast::TypePath { segments };
-
-                Ok(ast::Type::Path(path))
-            }
+            Ok(ast::Type::Path(path))
         }
         syn::Type::Infer(_)
         | syn::Type::Never(_)
@@ -251,5 +246,35 @@ fn build_type(ty: &syn::Type) -> Result<ast::Type, Error> {
             kind: ErrorKind::MiscTypes,
             span: ty.span(),
         }),
+    }
+}
+
+fn build_type_arguments(arguments: &PathArguments) -> Result<Vec<ast::Type>, Error> {
+    match arguments {
+        PathArguments::None => Ok(Vec::new()),
+        PathArguments::AngleBracketed(arguments) => arguments
+            .args
+            .iter()
+            .map(|argument| match argument {
+                GenericArgument::Lifetime(lifetime) => Err(Error {
+                    kind: ErrorKind::Lifetimes,
+                    span: lifetime.span(),
+                }),
+                GenericArgument::Type(ty) => build_type(ty),
+                GenericArgument::Const(c) => Err(Error {
+                    kind: ErrorKind::ConstGenerics,
+                    span: c.span(),
+                }),
+                GenericArgument::Binding(binding) => Err(Error {
+                    kind: ErrorKind::MiscTypes,
+                    span: binding.span(),
+                }),
+                GenericArgument::Constraint(constraint) => Err(Error {
+                    kind: ErrorKind::GenericBounds,
+                    span: constraint.span(),
+                }),
+            })
+            .collect(),
+        PathArguments::Parenthesized(_) => todo!(),
     }
 }

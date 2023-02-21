@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{convert::TryFrom, fmt};
 
 /// A top-level type definition.
 #[derive(Debug, PartialEq)]
@@ -52,23 +52,6 @@ pub struct Interface {
     pub fields: Vec<Field>,
 }
 
-impl Interface {
-    /// Create a new interface with the given name
-    /// and an empty list of fields.
-    pub fn new(name: &'static str) -> Self {
-        Self {
-            name,
-            fields: Vec::new(),
-        }
-    }
-
-    /// Add a field to the interface.
-    pub fn field(mut self, field: Field) -> Self {
-        self.fields.push(field);
-        self
-    }
-}
-
 impl From<camo::Struct> for Interface {
     fn from(structure: camo::Struct) -> Self {
         Self {
@@ -95,13 +78,6 @@ pub struct Field {
     pub name: &'static str,
     /// The type of the field.
     pub ty: Type,
-}
-
-impl Field {
-    /// Create a new field with the given name and type.
-    pub fn new(name: &'static str, ty: Type) -> Self {
-        Self { name, ty }
-    }
 }
 
 impl From<camo::Field> for Field {
@@ -151,7 +127,6 @@ pub struct Variant(Type);
 impl From<camo::Variant> for Variant {
     fn from(value: camo::Variant) -> Self {
         match value.content {
-            Some(camo::Type::Builtin(ty)) => Variant(Type::Builtin(ty.into())),
             Some(camo::Type::Path(ty)) => Variant(Type::Path(ty.into())),
             None => Variant(Type::Literal(LiteralType::String(value.name))),
         }
@@ -177,8 +152,27 @@ pub enum Type {
 impl From<camo::Type> for Type {
     fn from(ty: camo::Type) -> Self {
         match ty {
-            camo::Type::Builtin(ty) => Type::Builtin(BuiltinType::from(ty)),
-            camo::Type::Path(ty) => Type::Path(TypePath::from(ty)),
+            camo::Type::Path(ty) => match camo::BuiltinType::try_from(ty) {
+                Ok(ty) => Type::Builtin(BuiltinType::from(ty)),
+                Err(ty) => {
+                    if let Some(s) = ty.segments.first() {
+                        if ty.segments.len() == 1 && s.arguments.is_empty() {
+                            match s.name {
+                                "String" => {
+                                    return Type::Path(TypePath {
+                                        segments: Vec::from([PathSegment {
+                                            name: "string",
+                                            arguments: Vec::new(),
+                                        }]),
+                                    })
+                                }
+                                _ => return Type::Path(TypePath::from(ty)),
+                            }
+                        }
+                    }
+                    Type::Path(TypePath::from(ty))
+                }
+            },
         }
     }
 }
@@ -223,7 +217,7 @@ impl From<camo::BuiltinType> for BuiltinType {
             | camo::BuiltinType::Isize
             | camo::BuiltinType::F32
             | camo::BuiltinType::F64 => BuiltinType::Number,
-            camo::BuiltinType::Char | camo::BuiltinType::Str => BuiltinType::String,
+            camo::BuiltinType::Char => BuiltinType::String,
         }
     }
 }
@@ -274,24 +268,42 @@ impl fmt::Display for TypePath {
 }
 
 /// A segment of a type path.
-#[derive(Debug, Clone, PartialEq)]
-pub struct PathSegment(&'static str);
-
-impl PathSegment {
-    pub fn new(name: &'static str) -> Self {
-        Self(name)
-    }
+#[derive(Debug, PartialEq)]
+pub struct PathSegment {
+    /// The name of the segment.
+    pub name: &'static str,
+    /// The arguments provided to the segment.
+    pub arguments: Vec<Type>,
 }
 
 impl From<camo::PathSegment> for PathSegment {
     fn from(value: camo::PathSegment) -> Self {
-        Self(value.0)
+        Self {
+            name: value.name,
+            arguments: value
+                .arguments
+                .into_iter()
+                .map(|argument| argument.into())
+                .collect(),
+        }
     }
 }
 
 impl fmt::Display for PathSegment {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{}", self.name)?;
+        if !self.arguments.is_empty() {
+            write!(f, "<")?;
+            let mut iter = self.arguments.iter();
+            if let Some(argument) = iter.next() {
+                write!(f, "{}", argument)?;
+            }
+            for argument in iter {
+                write!(f, ", {}", argument)?;
+            }
+            write!(f, ">")?;
+        }
+        Ok(())
     }
 }
 

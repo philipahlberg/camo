@@ -1,0 +1,5 @@
+error: `camo` does not support multiple unnamed fields in enums
+ --> tests/cases/enum_multiple_unnamed_fields.rs:5:8
+  |
+5 |     One(i32, i32),
+  |        ^^^^^^^^^^

@@ -1,4 +1,6 @@
-use camo::{export, Camo as _};
+#![allow(unused)]
+
+use camo::Camo as _;
 use camo_typescript::{BuiltinType, Definition, Field, Interface, Type};
 
 #[test]
@@ -7,7 +9,6 @@ fn supports_booleans() {
 
     #[derive(Camo)]
     struct Foo {
-        #[allow(unused)]
         bar: bool,
     }
 
@@ -15,9 +16,13 @@ fn supports_booleans() {
 
     assert_eq!(
         foo,
-        Definition::Interface(
-            Interface::new("Foo").field(Field::new("bar", Type::Builtin(BuiltinType::Boolean)))
-        )
+        Definition::Interface(Interface {
+            name: "Foo",
+            fields: vec![Field {
+                name: "bar",
+                ty: Type::Builtin(BuiltinType::Boolean)
+            }]
+        })
     );
 }
 
@@ -27,11 +32,8 @@ fn supports_numbers() {
 
     #[derive(Camo)]
     struct Foo {
-        #[allow(unused)]
         foo: u32,
-        #[allow(unused)]
         bar: i32,
-        #[allow(unused)]
         baz: usize,
     }
 
@@ -39,12 +41,23 @@ fn supports_numbers() {
 
     assert_eq!(
         foo,
-        Definition::Interface(
-            Interface::new("Foo")
-                .field(Field::new("foo", Type::Builtin(BuiltinType::Number)))
-                .field(Field::new("bar", Type::Builtin(BuiltinType::Number)))
-                .field(Field::new("baz", Type::Builtin(BuiltinType::Number)))
-        )
+        Definition::Interface(Interface {
+            name: "Foo",
+            fields: vec![
+                Field {
+                    name: "foo",
+                    ty: Type::Builtin(BuiltinType::Number)
+                },
+                Field {
+                    name: "bar",
+                    ty: Type::Builtin(BuiltinType::Number)
+                },
+                Field {
+                    name: "baz",
+                    ty: Type::Builtin(BuiltinType::Number)
+                },
+            ],
+        })
     );
 }
 
@@ -54,7 +67,6 @@ fn supports_chars() {
 
     #[derive(Camo)]
     struct Foo {
-        #[allow(unused)]
         foo: char,
     }
 
@@ -62,9 +74,13 @@ fn supports_chars() {
 
     assert_eq!(
         foo,
-        Definition::Interface(
-            Interface::new("Foo").field(Field::new("foo", Type::Builtin(BuiltinType::String)))
-        )
+        Definition::Interface(Interface {
+            name: "Foo",
+            fields: vec![Field {
+                name: "foo",
+                ty: Type::Builtin(BuiltinType::String)
+            }]
+        })
     );
 }
 
@@ -72,9 +88,19 @@ fn supports_chars() {
 fn works_with_display() {
     use unindent::Unindent;
 
-    let interface = Interface::new("Foo")
-        .field(Field::new("foo", Type::Builtin(BuiltinType::Number)))
-        .field(Field::new("bar", Type::Builtin(BuiltinType::Boolean)));
+    let interface = Interface {
+        name: "Foo",
+        fields: vec![
+            Field {
+                name: "foo",
+                ty: Type::Builtin(BuiltinType::Number),
+            },
+            Field {
+                name: "bar",
+                ty: Type::Builtin(BuiltinType::Boolean),
+            },
+        ],
+    };
 
     let result = format!("{}", interface);
 
@@ -96,22 +122,24 @@ fn works_with_export() {
 
     #[derive(Camo)]
     struct Foo {
-        #[allow(unused)]
         foo: i32,
-        #[allow(unused)]
         bar: bool,
     }
 
-    let exports: Vec<Definition> = export! { Foo };
-
-    let foo = &exports[0];
-
     assert_eq!(
-        foo,
-        &Definition::Interface(
-            Interface::new("Foo")
-                .field(Field::new("foo", Type::Builtin(BuiltinType::Number)))
-                .field(Field::new("bar", Type::Builtin(BuiltinType::Boolean)))
-        )
+        Definition::from(Foo::camo()),
+        Definition::Interface(Interface {
+            name: "Foo",
+            fields: vec![
+                Field {
+                    name: "foo",
+                    ty: Type::Builtin(BuiltinType::Number)
+                },
+                Field {
+                    name: "bar",
+                    ty: Type::Builtin(BuiltinType::Boolean)
+                },
+            ],
+        },)
     );
 }

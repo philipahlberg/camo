@@ -1,0 +1,5 @@
+error: `camo` does not support lifetimes
+ --> tests/cases/lifetimes.rs:6:12
+  |
+6 | struct Foo<'a> {
+  |            ^^

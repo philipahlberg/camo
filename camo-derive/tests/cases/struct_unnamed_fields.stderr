@@ -1,0 +1,5 @@
+error: `camo` does not support unnamed fields in structs
+ --> tests/cases/struct_unnamed_fields.rs:4:11
+  |
+4 | struct Foo(i32, i32);
+  |           ^^^^^^^^^^

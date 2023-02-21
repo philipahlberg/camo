@@ -1,0 +1,5 @@
+error: `camo` does not support generic bounds
+ --> tests/cases/bounded_generics.rs:4:15
+  |
+4 | struct Foo<T: Clone> {
+  |               ^^^^^

@@ -1,0 +1,5 @@
+error: `camo` does not support named fields in enums
+ --> tests/cases/enum_named_fields.rs:5:9
+  |
+5 |     One { a: i32, b: i32 },
+  |         ^^^^^^^^^^^^^^^^^^

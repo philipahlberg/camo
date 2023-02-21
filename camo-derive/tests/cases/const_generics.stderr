@@ -1,0 +1,5 @@
+error: `camo` does not support const generics
+ --> tests/cases/const_generics.rs:4:12
+  |
+4 | struct Foo<const N: usize> {
+  |            ^^^^^
