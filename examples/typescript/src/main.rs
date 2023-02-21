@@ -17,6 +17,8 @@ struct Foo {
 struct Bar {
     field_four: Vec<usize>,
     field_five: Foo,
+    field_six: [u8; 8],
+    field_seven: Vec<&'static [u8]>,
 }
 
 #[derive(Camo, Debug)]

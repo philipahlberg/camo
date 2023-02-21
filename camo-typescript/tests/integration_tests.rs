@@ -150,6 +150,50 @@ fn supports_vec() {
 }
 
 #[test]
+fn supports_slice() {
+    #[derive(Camo)]
+    struct Foo {
+        foo: &'static [u8],
+    }
+
+    let foo: Definition = Foo::camo().into();
+
+    assert_eq!(
+        foo,
+        Definition::Interface(Interface {
+            name: "Foo",
+            parameters: Vec::new(),
+            fields: vec![Field {
+                name: "foo",
+                ty: Type::Array(Box::new(Type::Builtin(BuiltinType::Number),)),
+            }]
+        })
+    );
+}
+
+#[test]
+fn supports_array() {
+    #[derive(Camo)]
+    struct Foo {
+        foo: [u8; 16],
+    }
+
+    let foo: Definition = Foo::camo().into();
+
+    assert_eq!(
+        foo,
+        Definition::Interface(Interface {
+            name: "Foo",
+            parameters: Vec::new(),
+            fields: vec![Field {
+                name: "foo",
+                ty: Type::Array(Box::new(Type::Builtin(BuiltinType::Number),)),
+            }]
+        })
+    );
+}
+
+#[test]
 fn supports_enum() {
     struct V;
 

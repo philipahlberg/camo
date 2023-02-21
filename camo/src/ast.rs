@@ -72,6 +72,12 @@ pub struct Variant {
 pub enum Type {
     /// A path representing some type (e.g. `Foo` or `std::collections::HashMap`).
     Path(TypePath),
+    /// A type reference (e.g. `&'a str`).
+    Reference(Box<Type>),
+    /// A dynamically-sized array.
+    Slice(Box<Type>),
+    /// A fixed-size array.
+    Array(Box<Type>),
 }
 
 /// The name of a type (struct or enum) declared elsewhere.

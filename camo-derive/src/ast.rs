@@ -176,6 +176,9 @@ impl Variant {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Path(TypePath),
+    Reference(Box<Type>),
+    Slice(Box<Type>),
+    Array(Box<Type>),
 }
 
 impl Type {
@@ -185,6 +188,24 @@ impl Type {
                 let content = ty.into_token_stream();
                 quote! {
                     ::camo::Type::Path(#content)
+                }
+            }
+            Type::Reference(ty) => {
+                let content = ty.into_token_stream();
+                quote! {
+                    ::camo::Type::Reference(Box::new(#content))
+                }
+            }
+            Type::Slice(ty) => {
+                let content = ty.into_token_stream();
+                quote! {
+                    ::camo::Type::Slice(Box::new(#content))
+                }
+            }
+            Type::Array(ty) => {
+                let content = ty.into_token_stream();
+                quote! {
+                    ::camo::Type::Array(Box::new(#content))
                 }
             }
         }

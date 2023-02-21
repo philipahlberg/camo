@@ -26,7 +26,6 @@ pub enum ErrorKind {
     EnumMultipleUnnamedFields,
     StructMultipleUnnamedFields,
     FunctionTypes,
-    ArrayTypes,
     Macros,
     SelfQualifiedTypes,
     MiscTypes,
@@ -49,7 +48,6 @@ impl ErrorKind {
                 "`camo` does not support multiple unnamed fields in structs"
             }
             Self::FunctionTypes => "`camo` does not support function types",
-            Self::ArrayTypes => "`camo` does not support array types",
             Self::Macros => "`camo` does not support macros",
             Self::SelfQualifiedTypes => "`camo` does not support self-qualified types in paths",
             Self::MiscTypes => "`camo` does not support this type",
@@ -214,10 +212,8 @@ fn build_variants(variants: &Punctuated<Variant, Comma>) -> Result<Vec<ast::Vari
 
 fn build_type(ty: &syn::Type) -> Result<ast::Type, Error> {
     match ty {
-        syn::Type::Slice(_) | syn::Type::Array(_) => Err(Error {
-            kind: ErrorKind::ArrayTypes,
-            span: ty.span(),
-        }),
+        syn::Type::Slice(ty) => Ok(ast::Type::Slice(Box::new(build_type(&ty.elem)?))),
+        syn::Type::Array(ty) => Ok(ast::Type::Array(Box::new(build_type(&ty.elem)?))),
         syn::Type::BareFn(ty) => Err(Error {
             kind: ErrorKind::FunctionTypes,
             span: ty.span(),
@@ -252,11 +248,11 @@ fn build_type(ty: &syn::Type) -> Result<ast::Type, Error> {
 
             Ok(ast::Type::Path(path))
         }
+        syn::Type::Reference(ty) => Ok(ast::Type::Reference(Box::new(build_type(&ty.elem)?))),
         syn::Type::Infer(_)
         | syn::Type::Never(_)
         | syn::Type::ImplTrait(_)
         | syn::Type::Ptr(_)
-        | syn::Type::Reference(_)
         | syn::Type::TraitObject(_)
         | syn::Type::Tuple(_)
         | syn::Type::Verbatim(_) => Err(Error {

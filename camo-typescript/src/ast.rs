@@ -191,6 +191,9 @@ impl From<camo::Variant> for Variant {
                 Ok(ty) => Variant(Type::Builtin(ty.into())),
                 Err(ty) => Variant(Type::Path(ty.into())),
             },
+            Some(camo::Type::Reference(ty)) => Variant((*ty).into()),
+            Some(camo::Type::Slice(ty)) => Variant(Type::Array(Box::new((*ty).into()))),
+            Some(camo::Type::Array(ty)) => Variant(Type::Array(Box::new((*ty).into()))),
             None => Variant(Type::Literal(LiteralType::String(value.name))),
         }
     }
@@ -234,6 +237,9 @@ impl From<camo::Type> for Type {
                     Type::Path(TypePath::from(ty))
                 }
             },
+            camo::Type::Reference(ty) => Type::from(*ty),
+            camo::Type::Slice(ty) => Type::Array(Box::new(Type::from(*ty))),
+            camo::Type::Array(ty) => Type::Array(Box::new(Type::from(*ty))),
         }
     }
 }
