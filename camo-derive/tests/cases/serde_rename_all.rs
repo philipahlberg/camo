@@ -1,7 +1,9 @@
-use camo::{Camo as _, Container, Attributes, Item, Struct, StructVariant, NamedField, Type, PathSegment, TypePath};
+use camo::{Camo as _, Container, Attributes, RenameRule, Item, Struct, StructVariant, NamedField, Type, PathSegment, TypePath};
 use camo_derive::Camo;
+use serde::Serialize;
 
-#[derive(Camo)]
+#[derive(Camo, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct Foo {
     foo: u32,
     bar: bool,
@@ -14,7 +16,9 @@ fn main() {
     assert_eq!(
         foo,
         Container {
-            attributes: Attributes::default(),
+            attributes: Attributes {
+                rename_all: Some(RenameRule::CamelCase),
+            },
             item: Item::Struct(Struct {
                 name: "Foo",
                 arguments: Vec::new(),

@@ -1,5 +1,28 @@
 use std::convert::TryFrom;
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct Container {
+    pub attributes: Attributes,
+    pub item: Item,
+}
+
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct Attributes {
+    pub rename_all: Option<RenameRule>,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum RenameRule {
+    LowerCase,
+    UpperCase,
+    PascalCase,
+    CamelCase,
+    SnakeCase,
+    ScreamingSnakeCase,
+    KebabCase,
+    ScreamingKebabCase,
+}
+
 /// Represents an item.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Item {

@@ -4,8 +4,8 @@ use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
 use syn::{
-    Data, DataEnum, DataStruct, DeriveInput, Fields, GenericArgument, GenericParam, Generics,
-    PathArguments, Variant,
+    AttrStyle, Data, DataEnum, DataStruct, DeriveInput, Fields, GenericArgument, GenericParam,
+    Generics, ImplGenerics, Meta, MetaList, PathArguments, TypeGenerics, Variant, WhereClause,
 };
 
 use crate::ast;
@@ -29,6 +29,7 @@ pub enum ErrorKind {
     Macros,
     SelfQualifiedTypes,
     MiscTypes,
+    Attribute,
 }
 
 impl ErrorKind {
@@ -51,27 +52,140 @@ impl ErrorKind {
             Self::Macros => "`camo` does not support macros",
             Self::SelfQualifiedTypes => "`camo` does not support self-qualified types in paths",
             Self::MiscTypes => "`camo` does not support this type",
+            Self::Attribute => "`camo`: failed to parse attribute",
         }
     }
 }
 
 pub fn derive_camo(input: DeriveInput) -> Result<TokenStream, Error> {
-    let name = input.ident.clone();
-    build_impl(name, &input.generics, &input.data)
+    Impl::from_input(&input).map(Impl::into_token_stream)
 }
 
-fn build_impl(name: Ident, generics: &Generics, data: &Data) -> Result<TokenStream, Error> {
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-    let tokens = build_item(name.clone(), generics, data)?.into_token_stream();
+struct Impl<'a> {
+    name: Ident,
+    impl_generics: ImplGenerics<'a>,
+    ty_generics: TypeGenerics<'a>,
+    where_clause: Option<&'a WhereClause>,
+    container: ast::Container,
+}
 
-    Ok(quote! {
-        #[automatically_derived]
-        impl #impl_generics ::camo::Camo for #name #ty_generics #where_clause {
-            fn camo() -> ::camo::Item {
-                #tokens
+impl<'a> Impl<'a> {
+    fn from_input(input: &'a DeriveInput) -> Result<Self, Error> {
+        let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+        let container = ast::Container::from_input(input)?;
+        Ok(Self {
+            name: input.ident.clone(),
+            impl_generics,
+            ty_generics,
+            where_clause,
+            container,
+        })
+    }
+
+    fn into_token_stream(self) -> TokenStream {
+        let container = self.container.into_token_stream();
+        let Self {
+            name,
+            impl_generics,
+            ty_generics,
+            where_clause,
+            ..
+        } = self;
+        quote! {
+            #[automatically_derived]
+            impl #impl_generics ::camo::Camo for #name #ty_generics #where_clause {
+                fn camo() -> ::camo::Container {
+                    #container
+                }
             }
         }
-    })
+    }
+}
+
+impl ast::Container {
+    fn from_input(input: &DeriveInput) -> Result<Self, Error> {
+        let meta = input
+            .attrs
+            .iter()
+            .find_map(|attr| match attr.style {
+                AttrStyle::Outer => {
+                    if attr.path.segments.len() != 1 {
+                        return None;
+                    }
+                    let segment = attr.path.segments.first().unwrap();
+                    if segment.ident != "serde" {
+                        return None;
+                    }
+                    match attr.parse_meta() {
+                        Ok(Meta::Path(_)) => None,
+                        Ok(Meta::List(list)) => Some(Ok(list)),
+                        Ok(Meta::NameValue(_)) => None,
+                        Err(err) => Some(Err(Error {
+                            kind: ErrorKind::Attribute,
+                            span: err.span(),
+                        })),
+                    }
+                }
+                AttrStyle::Inner(_) => None,
+            })
+            .transpose()?;
+
+        let serde = meta.map(ast::SerdeAttribute::from_meta);
+
+        let item = build_item(input.ident.clone(), &input.generics, &input.data)?;
+
+        Ok(Self { serde, item })
+    }
+}
+
+impl ast::SerdeAttribute {
+    fn from_meta(meta: MetaList) -> Self {
+        let rename_all = meta.nested.into_iter().find_map(|nested| match nested {
+            syn::NestedMeta::Meta(meta) => ast::RenameRule::from_meta(meta),
+            syn::NestedMeta::Lit(_) => None,
+        });
+
+        Self { rename_all }
+    }
+}
+
+impl ast::RenameRule {
+    fn from_meta(meta: Meta) -> Option<Self> {
+        match meta {
+            Meta::Path(_) => None,
+            Meta::List(_) => None,
+            Meta::NameValue(v) => {
+                let name = v.path.segments.first().map(|s| s.ident.to_string());
+                match name.as_deref() {
+                    Some("rename_all") => match v.lit {
+                        syn::Lit::Str(s) => ast::RenameRule::from_string(s.value()),
+                        syn::Lit::ByteStr(_)
+                        | syn::Lit::Byte(_)
+                        | syn::Lit::Char(_)
+                        | syn::Lit::Int(_)
+                        | syn::Lit::Float(_)
+                        | syn::Lit::Bool(_)
+                        | syn::Lit::Verbatim(_) => None,
+                    },
+                    _ => None,
+                }
+            }
+        }
+    }
+
+    fn from_string(s: String) -> Option<Self> {
+        match s.as_str() {
+            "lowercase" => Some(Self::Lower),
+            "UPPERCASE" => Some(Self::Upper),
+            "PascalCase" => Some(Self::Pascal),
+            "camelCase" => Some(Self::Camel),
+            "snake_case" => Some(Self::Snake),
+            "SCREAMING_SNAKE_CASE" => Some(Self::ScreamingSnake),
+            "kebab-case" => Some(Self::Kebab),
+            "SCREAMING-KEBAB-CASE" => Some(Self::ScreamingKebab),
+            _ => None,
+        }
+    }
 }
 
 fn build_item(name: Ident, generics: &Generics, data: &Data) -> Result<ast::Item, Error> {

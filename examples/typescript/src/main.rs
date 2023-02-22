@@ -3,17 +3,20 @@
 use camo::Camo as _;
 use camo_derive::Camo;
 use camo_typescript::Definition;
+use serde::Serialize;
 use std::fs::File;
 use std::io::Write as _;
 
-#[derive(Camo, Debug)]
+#[derive(Camo, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct Foo {
     field_one: u32,
     field_two: bool,
     field_three: char,
 }
 
-#[derive(Camo, Debug)]
+#[derive(Camo, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct Bar {
     field_four: Vec<usize>,
     field_five: Foo,
@@ -21,7 +24,8 @@ struct Bar {
     field_seven: Vec<&'static [u8]>,
 }
 
-#[derive(Camo, Debug)]
+#[derive(Camo, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 enum FooOrBar<T> {
     Foo(Foo),
     Bar(Bar),

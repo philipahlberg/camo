@@ -6,6 +6,7 @@ use camo_typescript::{
     BuiltinType, Definition, Field, Interface, LiteralType, PathSegment, Type, TypePath, UnionType,
     Variant,
 };
+use serde::{Deserialize, Serialize};
 
 #[test]
 fn implements_from() {
@@ -20,7 +21,7 @@ fn implements_from() {
             name: "Foo",
             parameters: Vec::new(),
             fields: vec![Field {
-                name: "foo",
+                name: String::from("foo"),
                 ty: Type::Builtin(BuiltinType::Number)
             },],
         },)
@@ -42,7 +43,7 @@ fn supports_booleans() {
             name: "Foo",
             parameters: Vec::new(),
             fields: vec![Field {
-                name: "bar",
+                name: String::from("bar"),
                 ty: Type::Builtin(BuiltinType::Boolean)
             }]
         })
@@ -67,15 +68,15 @@ fn supports_numbers() {
             parameters: Vec::new(),
             fields: vec![
                 Field {
-                    name: "foo",
+                    name: String::from("foo"),
                     ty: Type::Builtin(BuiltinType::Number)
                 },
                 Field {
-                    name: "bar",
+                    name: String::from("bar"),
                     ty: Type::Builtin(BuiltinType::Number)
                 },
                 Field {
-                    name: "baz",
+                    name: String::from("baz"),
                     ty: Type::Builtin(BuiltinType::Number)
                 },
             ],
@@ -98,7 +99,7 @@ fn supports_chars() {
             name: "Foo",
             parameters: Vec::new(),
             fields: vec![Field {
-                name: "foo",
+                name: String::from("foo"),
                 ty: Type::Builtin(BuiltinType::String)
             }]
         })
@@ -120,7 +121,7 @@ fn supports_string() {
             name: "Foo",
             parameters: Vec::new(),
             fields: vec![Field {
-                name: "foo",
+                name: String::from("foo"),
                 ty: Type::Builtin(BuiltinType::String),
             }]
         })
@@ -142,7 +143,7 @@ fn supports_vec() {
             name: "Foo",
             parameters: Vec::new(),
             fields: vec![Field {
-                name: "foo",
+                name: String::from("foo"),
                 ty: Type::Array(Box::new(Type::Builtin(BuiltinType::Number),)),
             }]
         })
@@ -164,7 +165,7 @@ fn supports_slice() {
             name: "Foo",
             parameters: Vec::new(),
             fields: vec![Field {
-                name: "foo",
+                name: String::from("foo"),
                 ty: Type::Array(Box::new(Type::Builtin(BuiltinType::Number),)),
             }]
         })
@@ -186,7 +187,7 @@ fn supports_array() {
             name: "Foo",
             parameters: Vec::new(),
             fields: vec![Field {
-                name: "foo",
+                name: String::from("foo"),
                 ty: Type::Array(Box::new(Type::Builtin(BuiltinType::Number),)),
             }]
         })
@@ -248,11 +249,11 @@ fn display_interface() {
         parameters: Vec::from(["K"]),
         fields: vec![
             Field {
-                name: "foo",
+                name: String::from("foo"),
                 ty: Type::Builtin(BuiltinType::Number),
             },
             Field {
-                name: "bar",
+                name: String::from("bar"),
                 ty: Type::Path(TypePath {
                     segments: Vec::from([PathSegment {
                         name: "K",
@@ -307,5 +308,35 @@ fn display_enum() {
         \t| T;
         "
         .unindent()
+    );
+}
+
+#[test]
+fn serde_attribute() {
+    #[derive(Camo, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Foo {
+        one_two_three: i32,
+        four_five_six: Vec<u8>,
+    }
+
+    let def: Definition = Foo::camo().into();
+
+    assert_eq!(
+        def,
+        Definition::Interface(Interface {
+            name: "Foo",
+            parameters: Vec::new(),
+            fields: Vec::from([
+                Field {
+                    name: String::from("oneTwoThree"),
+                    ty: Type::Builtin(BuiltinType::Number),
+                },
+                Field {
+                    name: String::from("fourFiveSix"),
+                    ty: Type::Array(Box::new(Type::Builtin(BuiltinType::Number))),
+                },
+            ]),
+        })
     );
 }

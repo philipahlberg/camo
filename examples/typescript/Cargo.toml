@@ -9,3 +9,4 @@ publish = false
 camo = { path = "../../camo" }
 camo-derive = { path = "../../camo-derive" }
 camo-typescript = { path = "../../camo-typescript" }
+serde = { version = "1.0.152", features = ["derive"] }

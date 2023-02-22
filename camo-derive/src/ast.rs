@@ -2,6 +2,78 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct Container {
+    pub serde: Option<SerdeAttribute>,
+    pub item: Item,
+}
+
+impl Container {
+    pub fn into_token_stream(self) -> TokenStream {
+        let attributes = match self.serde {
+            Some(serde) => {
+                let rename_all = match serde.rename_all {
+                    Some(rename_all) => {
+                        let tokens = rename_all.into_token_stream();
+                        quote!(::core::option::Option::Some(#tokens))
+                    }
+                    None => quote!(::core::option::Option::None),
+                };
+                quote! {
+                    ::camo::Attributes {
+                        rename_all: #rename_all,
+                    }
+                }
+            }
+            None => quote! {
+                ::camo::Attributes {
+                    rename_all: ::core::option::Option::None,
+                }
+            },
+        };
+        let item = self.item.into_token_stream();
+
+        quote! {
+            ::camo::Container {
+                attributes: #attributes,
+                item: #item,
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SerdeAttribute {
+    pub rename_all: Option<RenameRule>,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum RenameRule {
+    Lower,
+    Upper,
+    Pascal,
+    Camel,
+    Snake,
+    ScreamingSnake,
+    Kebab,
+    ScreamingKebab,
+}
+
+impl RenameRule {
+    fn into_token_stream(self) -> TokenStream {
+        match self {
+            Self::Lower => quote!(::camo::RenameRule::LowerCase),
+            Self::Upper => quote!(::camo::RenameRule::UpperCase),
+            Self::Pascal => quote!(::camo::RenameRule::PascalCase),
+            Self::Camel => quote!(::camo::RenameRule::CamelCase),
+            Self::Snake => quote!(::camo::RenameRule::SnakeCase),
+            Self::ScreamingSnake => quote!(::camo::RenameRule::ScreamingSnakeCase),
+            Self::Kebab => quote!(::camo::RenameRule::KebabCase),
+            Self::ScreamingKebab => quote!(::camo::RenameRule::ScreamingKebabCase),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Item {
     Struct(Struct),
     Enum(Enum),

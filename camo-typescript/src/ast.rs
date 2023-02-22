@@ -16,14 +16,55 @@ pub enum Definition {
     Type(TypeDefinition),
 }
 
-impl From<camo::Item> for Definition {
-    fn from(value: camo::Item) -> Self {
-        match value {
+fn apply_rename_rule(rule: camo::RenameRule, field: &str) -> String {
+    match rule {
+        camo::RenameRule::LowerCase => field.to_lowercase(),
+        camo::RenameRule::UpperCase => field.to_uppercase(),
+        camo::RenameRule::PascalCase => snake_to_compressed_case(true, field),
+        camo::RenameRule::CamelCase => snake_to_compressed_case(false, field),
+        camo::RenameRule::SnakeCase => field.to_string(),
+        camo::RenameRule::ScreamingSnakeCase => field.to_uppercase(),
+        camo::RenameRule::KebabCase => field.replace('_', "-"),
+        camo::RenameRule::ScreamingKebabCase => field.to_uppercase().replace('_', "-"),
+    }
+}
+
+fn snake_to_compressed_case(capitalize_first: bool, field: &str) -> String {
+    let mut result = String::new();
+    let mut capitalize = capitalize_first;
+    for ch in field.chars() {
+        if ch == '_' {
+            capitalize = true;
+        } else if capitalize {
+            result.push(ch.to_ascii_uppercase());
+            capitalize = false;
+        } else {
+            result.push(ch);
+        }
+    }
+    result
+}
+
+impl From<camo::Container> for Definition {
+    fn from(container: camo::Container) -> Self {
+        let rename_all = container.attributes.rename_all;
+
+        match container.item {
             camo::Item::Struct(s) => match s.content {
                 camo::StructVariant::NamedFields(fields) => Definition::Interface(Interface {
                     name: s.name,
                     parameters: s.arguments,
-                    fields: fields.into_iter().map(Into::into).collect(),
+                    fields: fields
+                        .into_iter()
+                        .map(|field| Field {
+                            name: if let Some(rule) = rename_all {
+                                apply_rename_rule(rule, field.name)
+                            } else {
+                                field.name.to_string()
+                            },
+                            ty: Type::from(field.ty),
+                        })
+                        .collect(),
                 }),
                 camo::StructVariant::UnnamedField(field) => {
                     Definition::Type(TypeDefinition::Alias(AliasType {
@@ -79,18 +120,9 @@ impl fmt::Display for Interface {
 #[derive(Debug, PartialEq)]
 pub struct Field {
     /// The name of the field.
-    pub name: &'static str,
+    pub name: String,
     /// The type of the field.
     pub ty: Type,
-}
-
-impl From<camo::NamedField> for Field {
-    fn from(field: camo::NamedField) -> Self {
-        Self {
-            name: field.name,
-            ty: Type::from(field.ty),
-        }
-    }
 }
 
 impl fmt::Display for Field {

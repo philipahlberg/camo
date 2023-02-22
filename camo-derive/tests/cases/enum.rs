@@ -1,4 +1,4 @@
-use camo::{Camo as _, Item, Enum, Variant, Type, PathSegment, TypePath};
+use camo::{Camo as _, Container, Attributes, Item, Enum, Variant, Type, PathSegment, TypePath};
 use camo_derive::Camo;
 
 struct Bar {
@@ -16,25 +16,28 @@ fn main() {
 
     assert_eq!(
         foo,
-        Item::Enum(Enum {
-            name: "Foo",
-            arguments: Vec::new(),
-            variants: Vec::from([
-                Variant {
-                    name: "U32",
-                    content: Some(Type::Path(TypePath::from([PathSegment {
-                        name: "u32",
-                        arguments: Vec::new(),
-                    }])))
-                },
-                Variant {
-                    name: "Bar",
-                    content: Some(Type::Path(TypePath::from([PathSegment {
+        Container {
+            attributes: Attributes::default(),
+            item: Item::Enum(Enum {
+                name: "Foo",
+                arguments: Vec::new(),
+                variants: Vec::from([
+                    Variant {
+                        name: "U32",
+                        content: Some(Type::Path(TypePath::from([PathSegment {
+                            name: "u32",
+                            arguments: Vec::new(),
+                        }])))
+                    },
+                    Variant {
                         name: "Bar",
-                        arguments: Vec::new(),
-                    }])))
-                },
-            ])
-        })
+                        content: Some(Type::Path(TypePath::from([PathSegment {
+                            name: "Bar",
+                            arguments: Vec::new(),
+                        }])))
+                    },
+                ]),
+            }),
+        }
     );
 }
