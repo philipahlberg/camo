@@ -7,35 +7,41 @@ use serde::Serialize;
 use std::fs::File;
 use std::io::Write as _;
 
-#[derive(Camo, Debug, Serialize)]
+#[derive(Camo, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct Foo {
+pub struct Foo {
     field_one: u32,
     field_two: bool,
-    field_three: char,
+    field_three: String,
+    field_four: Vec<i32>,
 }
 
-#[derive(Camo, Debug, Serialize)]
+#[derive(Camo, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct Bar {
-    field_four: Vec<usize>,
-    field_five: Foo,
-    field_six: [u8; 8],
-    field_seven: Vec<&'static [u8]>,
+pub enum ExternallyTagged {
+    FirstVariant(String),
+    SecondVariant(Vec<i32>),
 }
 
-#[derive(Camo, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-enum FooOrBar<T> {
-    Foo(Foo),
-    Bar(Bar),
-    Num(usize),
-    Simple,
-    Generic(T),
+#[derive(Camo, Serialize)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum InternallyTagged {
+    FirstVariant(Foo),
+    SecondVariant(Foo),
+}
+
+#[derive(Camo, Serialize)]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
+pub enum AdjacentlyTagged {
+    FirstVariant(String),
+    SecondVariant(Vec<i32>),
 }
 
 #[derive(Camo, Debug)]
-struct New(i32);
+struct NewType(i32);
+
+#[derive(Camo, Debug)]
+struct Generic<T>(T);
 
 fn main() -> std::result::Result<(), std::io::Error> {
     let mut file = File::create("types.ts")?;
@@ -43,9 +49,11 @@ fn main() -> std::result::Result<(), std::io::Error> {
     struct T;
     let types: &[Definition] = &[
         Foo::camo().into(),
-        Bar::camo().into(),
-        FooOrBar::<T>::camo().into(),
-        New::camo().into(),
+        ExternallyTagged::camo().into(),
+        InternallyTagged::camo().into(),
+        AdjacentlyTagged::camo().into(),
+        NewType::camo().into(),
+        Generic::<T>::camo().into(),
     ];
 
     for ty in types {

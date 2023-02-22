@@ -3,7 +3,7 @@ use quote::quote;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Container {
-    pub serde: Option<SerdeAttribute>,
+    pub serde: Option<SerdeAttributes>,
     pub item: Item,
 }
 
@@ -11,22 +11,47 @@ impl Container {
     pub fn into_token_stream(self) -> TokenStream {
         let attributes = match self.serde {
             Some(serde) => {
-                let rename_all = match serde.rename_all {
-                    Some(rename_all) => {
-                        let tokens = rename_all.into_token_stream();
+                let rename = match serde.rename {
+                    Some(attr) => {
+                        let tokens = attr.into_token_stream();
                         quote!(::core::option::Option::Some(#tokens))
+                    }
+                    None => quote!(::core::option::Option::None),
+                };
+                let rename_all = match serde.rename_all {
+                    Some(attr) => {
+                        let tokens = attr.into_token_stream();
+                        quote!(::core::option::Option::Some(#tokens))
+                    }
+                    None => quote!(::core::option::Option::None),
+                };
+                let tag = match serde.tag {
+                    Some(attr) => {
+                        quote!(::core::option::Option::Some(#attr))
+                    }
+                    None => quote!(::core::option::Option::None),
+                };
+                let content = match serde.content {
+                    Some(attr) => {
+                        quote!(::core::option::Option::Some(#attr))
                     }
                     None => quote!(::core::option::Option::None),
                 };
                 quote! {
                     ::camo::Attributes {
+                        rename: #rename,
                         rename_all: #rename_all,
+                        tag: #tag,
+                        content: #content,
                     }
                 }
             }
             None => quote! {
                 ::camo::Attributes {
+                    rename: ::core::option::Option::None,
                     rename_all: ::core::option::Option::None,
+                    tag: ::core::option::Option::None,
+                    content: ::core::option::Option::None,
                 }
             },
         };
@@ -42,8 +67,11 @@ impl Container {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct SerdeAttribute {
+pub struct SerdeAttributes {
     pub rename_all: Option<RenameRule>,
+    pub rename: Option<RenameRule>,
+    pub tag: Option<String>,
+    pub content: Option<String>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]

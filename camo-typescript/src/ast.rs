@@ -1,5 +1,7 @@
 use std::{convert::TryFrom, fmt};
 
+use camo::RenameRule;
+
 /// A top-level type definition.
 #[derive(Debug, PartialEq)]
 pub enum Definition {
@@ -13,23 +15,30 @@ pub enum Definition {
     /// }
     /// ```
     Interface(Interface),
+    /// A type definition.
+    ///
+    /// Example:
+    ///
+    /// ```ts
+    /// type Foo = { value: number };
+    /// ```
     Type(TypeDefinition),
 }
 
-fn apply_rename_rule(rule: camo::RenameRule, field: &str) -> String {
+fn apply_rename_rule_to_field_name(rule: camo::RenameRule, name: &str) -> String {
     match rule {
-        camo::RenameRule::LowerCase => field.to_lowercase(),
-        camo::RenameRule::UpperCase => field.to_uppercase(),
-        camo::RenameRule::PascalCase => snake_to_compressed_case(true, field),
-        camo::RenameRule::CamelCase => snake_to_compressed_case(false, field),
-        camo::RenameRule::SnakeCase => field.to_string(),
-        camo::RenameRule::ScreamingSnakeCase => field.to_uppercase(),
-        camo::RenameRule::KebabCase => field.replace('_', "-"),
-        camo::RenameRule::ScreamingKebabCase => field.to_uppercase().replace('_', "-"),
+        camo::RenameRule::LowerCase => name.to_lowercase(),
+        camo::RenameRule::UpperCase => name.to_uppercase(),
+        camo::RenameRule::PascalCase => snake_to_non_snake_case(true, name),
+        camo::RenameRule::CamelCase => snake_to_non_snake_case(false, name),
+        camo::RenameRule::SnakeCase => name.to_string(),
+        camo::RenameRule::ScreamingSnakeCase => name.to_uppercase(),
+        camo::RenameRule::KebabCase => name.replace('_', "-"),
+        camo::RenameRule::ScreamingKebabCase => name.to_uppercase().replace('_', "-"),
     }
 }
 
-fn snake_to_compressed_case(capitalize_first: bool, field: &str) -> String {
+fn snake_to_non_snake_case(capitalize_first: bool, field: &str) -> String {
     let mut result = String::new();
     let mut capitalize = capitalize_first;
     for ch in field.chars() {
@@ -45,20 +54,51 @@ fn snake_to_compressed_case(capitalize_first: bool, field: &str) -> String {
     result
 }
 
+fn apply_rename_rule_to_type_name(rule: camo::RenameRule, name: &str) -> String {
+    match rule {
+        camo::RenameRule::LowerCase => name.to_lowercase(),
+        camo::RenameRule::UpperCase => name.to_uppercase(),
+        camo::RenameRule::PascalCase => name.to_string(),
+        camo::RenameRule::CamelCase => name[..1].to_ascii_lowercase() + &name[1..],
+        camo::RenameRule::SnakeCase => pascal_to_separated_case('_', name),
+        camo::RenameRule::ScreamingSnakeCase => pascal_to_separated_case('_', name).to_uppercase(),
+        camo::RenameRule::KebabCase => pascal_to_separated_case('-', name),
+        camo::RenameRule::ScreamingKebabCase => pascal_to_separated_case('-', name).to_uppercase(),
+    }
+}
+
+fn pascal_to_separated_case(separator: char, name: &str) -> String {
+    let mut result = String::new();
+    for (i, ch) in name.char_indices() {
+        if i > 0 && ch.is_uppercase() {
+            result.push(separator);
+        }
+        result.push(ch.to_ascii_lowercase());
+    }
+    result
+}
+
 impl From<camo::Container> for Definition {
     fn from(container: camo::Container) -> Self {
-        let rename_all = container.attributes.rename_all;
+        let rename_rule = container.attributes.rename;
+        let rename_all_rule = container.attributes.rename_all;
+        let tag_rule = container.attributes.tag;
+        let content_rule = container.attributes.content;
 
         match container.item {
             camo::Item::Struct(s) => match s.content {
                 camo::StructVariant::NamedFields(fields) => Definition::Interface(Interface {
-                    name: s.name,
+                    name: if let Some(rule) = rename_rule {
+                        apply_rename_rule_to_type_name(rule, s.name)
+                    } else {
+                        s.name.to_string()
+                    },
                     parameters: s.arguments,
                     fields: fields
                         .into_iter()
                         .map(|field| Field {
-                            name: if let Some(rule) = rename_all {
-                                apply_rename_rule(rule, field.name)
+                            name: if let Some(rule) = rename_all_rule {
+                                apply_rename_rule_to_field_name(rule, field.name)
                             } else {
                                 field.name.to_string()
                             },
@@ -68,12 +108,27 @@ impl From<camo::Container> for Definition {
                 }),
                 camo::StructVariant::UnnamedField(field) => {
                     Definition::Type(TypeDefinition::Alias(AliasType {
-                        name: s.name,
+                        name: if let Some(rule) = rename_rule {
+                            apply_rename_rule_to_type_name(rule, s.name)
+                        } else {
+                            s.name.to_string()
+                        },
+                        parameters: s.arguments,
                         ty: Type::from(field.ty),
                     }))
                 }
             },
-            camo::Item::Enum(ty) => Definition::Type(TypeDefinition::Union(UnionType::from(ty))),
+            camo::Item::Enum(ty) => {
+                Definition::Type(TypeDefinition::Union(if let Some(tag) = tag_rule {
+                    if let Some(content) = content_rule {
+                        UnionType::adjacently_tagged(rename_rule, rename_all_rule, tag, content, ty)
+                    } else {
+                        UnionType::internally_tagged(rename_rule, rename_all_rule, tag, ty)
+                    }
+                } else {
+                    UnionType::externally_tagged(rename_rule, rename_all_rule, ty)
+                }))
+            }
         }
     }
 }
@@ -91,7 +146,7 @@ impl fmt::Display for Definition {
 #[derive(Debug, PartialEq)]
 pub struct Interface {
     /// The name of the interface.
-    pub name: &'static str,
+    pub name: String,
     /// The generic parameters of the interface.
     pub parameters: Vec<&'static str>,
     /// The fields of the interface.
@@ -164,13 +219,22 @@ impl fmt::Display for TypeDefinition {
 
 #[derive(Debug, PartialEq)]
 pub struct AliasType {
-    pub name: &'static str,
+    pub name: String,
+    pub parameters: Vec<&'static str>,
     pub ty: Type,
 }
 
 impl fmt::Display for AliasType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "type {} = {};", self.name, self.ty)
+        write!(f, "type {}", self.name)?;
+        if !self.parameters.is_empty() {
+            write!(f, "<")?;
+            for parameter in &self.parameters {
+                write!(f, "{}", parameter)?;
+            }
+            write!(f, ">")?;
+        }
+        writeln!(f, " = {};", self.ty)
     }
 }
 
@@ -178,19 +242,74 @@ impl fmt::Display for AliasType {
 #[derive(Debug, PartialEq)]
 pub struct UnionType {
     /// The name of the union type.
-    pub name: &'static str,
+    pub name: String,
     /// The generic parameters of the union type.
     pub parameters: Vec<&'static str>,
     /// The variants of the union type.
     pub variants: Vec<Variant>,
 }
 
-impl From<camo::Enum> for UnionType {
-    fn from(value: camo::Enum) -> Self {
+impl UnionType {
+    fn externally_tagged(
+        rename: Option<RenameRule>,
+        rename_all: Option<RenameRule>,
+        ty: camo::Enum,
+    ) -> Self {
         Self {
-            name: value.name,
-            parameters: value.arguments,
-            variants: value.variants.into_iter().map(Into::into).collect(),
+            name: if let Some(rule) = rename {
+                apply_rename_rule_to_type_name(rule, ty.name)
+            } else {
+                ty.name.to_string()
+            },
+            parameters: ty.arguments,
+            variants: ty
+                .variants
+                .into_iter()
+                .map(|variant| Variant::externally_tagged(rename_all, variant))
+                .collect(),
+        }
+    }
+
+    fn adjacently_tagged(
+        rename: Option<RenameRule>,
+        rename_all: Option<RenameRule>,
+        tag: &'static str,
+        content: &'static str,
+        ty: camo::Enum,
+    ) -> Self {
+        Self {
+            name: if let Some(rule) = rename {
+                apply_rename_rule_to_type_name(rule, ty.name)
+            } else {
+                ty.name.to_string()
+            },
+            parameters: ty.arguments,
+            variants: ty
+                .variants
+                .into_iter()
+                .map(|variant| Variant::adjacently_tagged(rename_all, tag, content, variant))
+                .collect(),
+        }
+    }
+
+    fn internally_tagged(
+        rename: Option<RenameRule>,
+        rename_all: Option<RenameRule>,
+        tag: &'static str,
+        ty: camo::Enum,
+    ) -> Self {
+        Self {
+            name: if let Some(rule) = rename {
+                apply_rename_rule_to_type_name(rule, ty.name)
+            } else {
+                ty.name.to_string()
+            },
+            parameters: ty.arguments,
+            variants: ty
+                .variants
+                .into_iter()
+                .map(|variant| Variant::internally_tagged(rename_all, tag, variant))
+                .collect(),
         }
     }
 }
@@ -216,17 +335,97 @@ impl fmt::Display for UnionType {
 #[derive(Debug, PartialEq)]
 pub struct Variant(pub Type);
 
-impl From<camo::Variant> for Variant {
-    fn from(value: camo::Variant) -> Self {
-        match value.content {
-            Some(camo::Type::Path(ty)) => match camo::BuiltinType::try_from(ty) {
-                Ok(ty) => Variant(Type::Builtin(ty.into())),
-                Err(ty) => Variant(Type::Path(ty.into())),
-            },
-            Some(camo::Type::Reference(ty)) => Variant((*ty).into()),
-            Some(camo::Type::Slice(ty)) => Variant(Type::Array(Box::new((*ty).into()))),
-            Some(camo::Type::Array(ty)) => Variant(Type::Array(Box::new((*ty).into()))),
-            None => Variant(Type::Literal(LiteralType::String(value.name))),
+impl Variant {
+    fn externally_tagged(rename_all: Option<RenameRule>, variant: camo::Variant) -> Self {
+        if let Some(content) = variant.content {
+            Variant(Type::Object(ObjectType {
+                fields: Vec::from([Field {
+                    name: if let Some(rule) = rename_all {
+                        apply_rename_rule_to_type_name(rule, variant.name)
+                    } else {
+                        variant.name.to_string()
+                    },
+                    ty: Type::from(content),
+                }]),
+            }))
+        } else {
+            Self(Type::Literal(LiteralType::String(
+                if let Some(rule) = rename_all {
+                    apply_rename_rule_to_type_name(rule, variant.name)
+                } else {
+                    String::from(variant.name)
+                },
+            )))
+        }
+    }
+
+    fn adjacently_tagged(
+        rename_all: Option<RenameRule>,
+        tag_name: &'static str,
+        content_name: &'static str,
+        variant: camo::Variant,
+    ) -> Self {
+        if let Some(content) = variant.content {
+            Self(Type::Object(ObjectType {
+                fields: Vec::from([
+                    Field {
+                        name: String::from(tag_name),
+                        ty: Type::Literal(LiteralType::String(if let Some(rule) = rename_all {
+                            apply_rename_rule_to_type_name(rule, variant.name)
+                        } else {
+                            variant.name.to_string()
+                        })),
+                    },
+                    Field {
+                        name: String::from(content_name),
+                        ty: Type::from(content),
+                    },
+                ]),
+            }))
+        } else {
+            Self(Type::Object(ObjectType {
+                fields: Vec::from([Field {
+                    name: String::from(tag_name),
+                    ty: Type::Literal(LiteralType::String(if let Some(rule) = rename_all {
+                        apply_rename_rule_to_type_name(rule, variant.name)
+                    } else {
+                        variant.name.to_string()
+                    })),
+                }]),
+            }))
+        }
+    }
+
+    fn internally_tagged(
+        rename_all: Option<RenameRule>,
+        tag: &'static str,
+        variant: camo::Variant,
+    ) -> Self {
+        if let Some(content) = variant.content {
+            Variant(Type::Intersection(IntersectionType {
+                left: Box::new(Type::Object(ObjectType {
+                    fields: Vec::from([Field {
+                        name: String::from(tag),
+                        ty: Type::Literal(LiteralType::String(if let Some(rule) = rename_all {
+                            apply_rename_rule_to_type_name(rule, variant.name)
+                        } else {
+                            variant.name.to_string()
+                        })),
+                    }]),
+                })),
+                right: Box::new(Type::from(content)),
+            }))
+        } else {
+            Self(Type::Object(ObjectType {
+                fields: Vec::from([Field {
+                    name: String::from(tag),
+                    ty: Type::Literal(LiteralType::String(if let Some(rule) = rename_all {
+                        apply_rename_rule_to_type_name(rule, variant.name)
+                    } else {
+                        String::from(variant.name)
+                    })),
+                }]),
+            }))
         }
     }
 }
@@ -246,6 +445,7 @@ pub enum Type {
     Object(ObjectType),
     Literal(LiteralType),
     Array(Box<Type>),
+    Intersection(IntersectionType),
 }
 
 impl From<camo::Type> for Type {
@@ -284,6 +484,7 @@ impl fmt::Display for Type {
             Type::Object(ty) => write!(f, "{}", ty),
             Type::Literal(ty) => write!(f, "\"{}\"", ty),
             Type::Array(ty) => write!(f, "{}[]", ty),
+            Type::Intersection(ty) => write!(f, "{}", ty),
         }
     }
 }
@@ -428,7 +629,7 @@ impl fmt::Display for ObjectType {
 #[derive(Debug, PartialEq)]
 pub enum LiteralType {
     /// A string literal type.
-    String(&'static str),
+    String(String),
 }
 
 impl fmt::Display for LiteralType {
@@ -436,5 +637,17 @@ impl fmt::Display for LiteralType {
         match self {
             LiteralType::String(s) => write!(f, "{}", s),
         }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct IntersectionType {
+    pub left: Box<Type>,
+    pub right: Box<Type>,
+}
+
+impl fmt::Display for IntersectionType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} & {}", self.left, self.right)
     }
 }

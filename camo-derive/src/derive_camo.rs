@@ -29,7 +29,8 @@ pub enum ErrorKind {
     Macros,
     SelfQualifiedTypes,
     MiscTypes,
-    Attribute,
+    Syn(syn::Error),
+    InvalidRenameRule,
 }
 
 impl ErrorKind {
@@ -52,13 +53,23 @@ impl ErrorKind {
             Self::Macros => "`camo` does not support macros",
             Self::SelfQualifiedTypes => "`camo` does not support self-qualified types in paths",
             Self::MiscTypes => "`camo` does not support this type",
-            Self::Attribute => "`camo`: failed to parse attribute",
+            Self::Syn(_) => "`camo`: failed to parse attribute",
+            Self::InvalidRenameRule => "`camo`: invalid rename rule",
         }
     }
 }
 
-pub fn derive_camo(input: DeriveInput) -> Result<TokenStream, Error> {
-    Impl::from_input(&input).map(Impl::into_token_stream)
+pub fn derive_camo(input: DeriveInput) -> TokenStream {
+    match Impl::from_input(&input) {
+        Ok(v) => v.into_token_stream(),
+        Err(error) => {
+            if let ErrorKind::Syn(err) = error.kind {
+                err.into_compile_error()
+            } else {
+                syn::Error::new(error.span, error.kind.message()).into_compile_error()
+            }
+        }
+    }
 }
 
 struct Impl<'a> {
@@ -120,17 +131,20 @@ impl ast::Container {
                         Ok(Meta::Path(_)) => None,
                         Ok(Meta::List(list)) => Some(Ok(list)),
                         Ok(Meta::NameValue(_)) => None,
-                        Err(err) => Some(Err(Error {
-                            kind: ErrorKind::Attribute,
-                            span: err.span(),
-                        })),
+                        Err(err) => {
+                            let span = err.span();
+                            Some(Err(Error {
+                                kind: ErrorKind::Syn(err),
+                                span,
+                            }))
+                        }
                     }
                 }
                 AttrStyle::Inner(_) => None,
             })
             .transpose()?;
 
-        let serde = meta.map(ast::SerdeAttribute::from_meta);
+        let serde = meta.map(ast::SerdeAttributes::from_meta_list).transpose()?;
 
         let item = build_item(input.ident.clone(), &input.generics, &input.data)?;
 
@@ -138,41 +152,105 @@ impl ast::Container {
     }
 }
 
-impl ast::SerdeAttribute {
-    fn from_meta(meta: MetaList) -> Self {
-        let rename_all = meta.nested.into_iter().find_map(|nested| match nested {
-            syn::NestedMeta::Meta(meta) => ast::RenameRule::from_meta(meta),
-            syn::NestedMeta::Lit(_) => None,
+impl ast::SerdeAttributes {
+    fn from_meta_list(meta: MetaList) -> Result<Self, Error> {
+        let rules: Result<Vec<_>, _> = meta
+            .nested
+            .into_iter()
+            .filter_map(|nested| match nested {
+                syn::NestedMeta::Meta(meta) => SerdeAttribute::from_meta(meta),
+                syn::NestedMeta::Lit(_) => None,
+            })
+            .collect();
+
+        let rules = rules?;
+
+        let rename_all = rules.iter().find_map(|attr| match attr {
+            SerdeAttribute::Rename(_) => None,
+            SerdeAttribute::RenameAll(r) => Some(*r),
+            SerdeAttribute::Tag(_) => None,
+            SerdeAttribute::Content(_) => None,
         });
 
-        Self { rename_all }
+        let rename = rules.iter().find_map(|attr| match attr {
+            SerdeAttribute::Rename(r) => Some(*r),
+            SerdeAttribute::RenameAll(_) => None,
+            SerdeAttribute::Tag(_) => None,
+            SerdeAttribute::Content(_) => None,
+        });
+
+        let tag = rules.iter().find_map(|attr| match attr {
+            SerdeAttribute::Rename(_) => None,
+            SerdeAttribute::RenameAll(_) => None,
+            SerdeAttribute::Tag(s) => Some(s.clone()),
+            SerdeAttribute::Content(_) => None,
+        });
+
+        let content = rules.iter().find_map(|attr| match attr {
+            SerdeAttribute::Rename(_) => None,
+            SerdeAttribute::RenameAll(_) => None,
+            SerdeAttribute::Tag(_) => None,
+            SerdeAttribute::Content(s) => Some(s.clone()),
+        });
+
+        Ok(Self {
+            rename,
+            rename_all,
+            tag,
+            content,
+        })
     }
 }
 
-impl ast::RenameRule {
-    fn from_meta(meta: Meta) -> Option<Self> {
+enum SerdeAttribute {
+    Rename(ast::RenameRule),
+    RenameAll(ast::RenameRule),
+    Tag(String),
+    Content(String),
+}
+
+impl SerdeAttribute {
+    fn from_meta(meta: Meta) -> Option<Result<Self, Error>> {
         match meta {
             Meta::Path(_) => None,
             Meta::List(_) => None,
             Meta::NameValue(v) => {
                 let name = v.path.segments.first().map(|s| s.ident.to_string());
+                let (span, value) = match v.lit {
+                    syn::Lit::Str(s) => (s.span(), s.value()),
+                    syn::Lit::ByteStr(_)
+                    | syn::Lit::Byte(_)
+                    | syn::Lit::Char(_)
+                    | syn::Lit::Int(_)
+                    | syn::Lit::Float(_)
+                    | syn::Lit::Bool(_)
+                    | syn::Lit::Verbatim(_) => return None,
+                };
                 match name.as_deref() {
-                    Some("rename_all") => match v.lit {
-                        syn::Lit::Str(s) => ast::RenameRule::from_string(s.value()),
-                        syn::Lit::ByteStr(_)
-                        | syn::Lit::Byte(_)
-                        | syn::Lit::Char(_)
-                        | syn::Lit::Int(_)
-                        | syn::Lit::Float(_)
-                        | syn::Lit::Bool(_)
-                        | syn::Lit::Verbatim(_) => None,
+                    Some("rename_all") => match ast::RenameRule::from_string(value) {
+                        Some(rule) => Some(Ok(Self::RenameAll(rule))),
+                        None => Some(Err(Error {
+                            kind: ErrorKind::InvalidRenameRule,
+                            span,
+                        })),
                     },
+                    Some("rename") => match ast::RenameRule::from_string(value) {
+                        Some(rule) => Some(Ok(Self::Rename(rule))),
+                        None => Some(Err(Error {
+                            kind: ErrorKind::InvalidRenameRule,
+                            span,
+                        })),
+                    },
+                    Some("tag") => Some(Ok(Self::Tag(value))),
+                    Some("content") => Some(Ok(Self::Content(value))),
                     _ => None,
                 }
             }
         }
     }
+}
 
+impl ast::RenameRule {
     fn from_string(s: String) -> Option<Self> {
         match s.as_str() {
             "lowercase" => Some(Self::Lower),

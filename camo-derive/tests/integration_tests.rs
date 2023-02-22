@@ -7,7 +7,8 @@ fn tests() {
     cases.pass("tests/cases/enum.rs");
     cases.pass("tests/cases/generics.rs");
     cases.pass("tests/cases/newtype.rs");
-    cases.pass("tests/cases/serde_rename_all.rs");
+    cases.pass("tests/cases/serde_rename.rs");
+    cases.pass("tests/cases/serde_tag_content.rs");
     cases.compile_fail("tests/cases/bounded_generics.rs");
     cases.compile_fail("tests/cases/union.rs");
     cases.compile_fail("tests/cases/lifetimes.rs");
@@ -20,4 +21,5 @@ fn tests() {
     cases.compile_fail("tests/cases/macros.rs");
     cases.compile_fail("tests/cases/self_qualified_types.rs");
     cases.compile_fail("tests/cases/trait_object.rs");
+    cases.compile_fail("tests/cases/serde_error.rs");
 }

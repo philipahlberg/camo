@@ -1,0 +1,5 @@
+error: `camo`: invalid rename rule
+ --> tests/cases/serde_error.rs:4:22
+  |
+4 | #[serde(rename_all = "oops")]
+  |                      ^^^^^^

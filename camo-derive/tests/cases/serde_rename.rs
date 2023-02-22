@@ -3,7 +3,7 @@ use camo_derive::Camo;
 use serde::Serialize;
 
 #[derive(Camo, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", rename = "lowercase")]
 struct Foo {
     foo: u32,
     bar: bool,
@@ -17,7 +17,9 @@ fn main() {
         foo,
         Container {
             attributes: Attributes {
+                rename: Some(RenameRule::LowerCase),
                 rename_all: Some(RenameRule::CamelCase),
+                ..Attributes::default()
             },
             item: Item::Struct(Struct {
                 name: "Foo",

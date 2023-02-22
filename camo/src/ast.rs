@@ -8,7 +8,10 @@ pub struct Container {
 
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct Attributes {
+    pub rename: Option<RenameRule>,
     pub rename_all: Option<RenameRule>,
+    pub tag: Option<&'static str>,
+    pub content: Option<&'static str>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
