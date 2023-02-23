@@ -1,4 +1,4 @@
-use camo::{Camo as _, Container, Attributes, Item, Enum, Visibility, Variant, VariantContent, NamedField, Type, PathSegment, TypePath};
+use camo::core::{Camo as _, Container, Attributes, Item, Enum, Visibility, Variant, VariantContent, NamedField, Type, PathSegment, TypePath};
 use camo_derive::Camo;
 
 #[derive(Camo)]

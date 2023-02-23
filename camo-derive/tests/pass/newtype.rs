@@ -1,4 +1,4 @@
-use camo::{Camo as _, Container, Attributes, Item, Struct, Visibility, StructVariant, UnnamedField, Type, PathSegment, TypePath};
+use camo::core::{Camo as _, Container, Attributes, Item, Struct, Visibility, StructVariant, UnnamedField, Type, PathSegment, TypePath};
 use camo_derive::Camo;
 
 #[derive(Camo)]

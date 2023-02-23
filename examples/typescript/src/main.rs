@@ -1,13 +1,12 @@
 #![allow(dead_code)]
 
-use camo::Camo as _;
-use camo_typescript::Definition;
+use camo::{core::Camo as _, typescript::Definition};
 use clap::Parser;
 use std::fs::File;
 use std::io::Write as _;
 
 mod types {
-    use camo_derive::Camo;
+    use camo::derive::Camo;
     use serde::Serialize;
 
     #[derive(Camo, Serialize)]

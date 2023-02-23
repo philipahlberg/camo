@@ -1,3 +1,4 @@
+use camo_core as camo;
 use std::{convert::TryFrom, fmt};
 
 /// A top-level type definition.

@@ -1,5 +1,5 @@
+use camo::core::{Camo as _, Container, Attributes, Item, Struct, Visibility, StructVariant, NamedField, Type, TypePath, PathSegment};
 use camo_derive::Camo;
-use camo::{Camo as _, Container, Attributes, Item, Struct, Visibility, StructVariant, NamedField, Type, TypePath, PathSegment};
 
 #[derive(Camo)]
 struct Foo<T> {

@@ -102,8 +102,8 @@ impl Impl {
         let container = container.into_token_stream();
         quote! {
             #[automatically_derived]
-            impl #impl_generics ::camo::Camo for #name #ty_generics #where_clause {
-                fn camo() -> ::camo::Container {
+            impl #impl_generics ::camo::core::Camo for #name #ty_generics #where_clause {
+                fn camo() -> ::camo::core::Container {
                     #container
                 }
             }

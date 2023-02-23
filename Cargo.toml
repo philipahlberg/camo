@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "camo",
+    "camo-core",
     "camo-derive",
     "camo-typescript",
     "examples/typescript",

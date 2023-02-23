@@ -16,7 +16,7 @@ impl Container {
                 let tag = literal_attr_opt_to_token_stream(serde.tag);
                 let content = literal_attr_opt_to_token_stream(serde.content);
                 quote! {
-                    ::camo::Attributes {
+                    ::camo::core::Attributes {
                         rename: #rename,
                         rename_all: #rename_all,
                         tag: #tag,
@@ -25,7 +25,7 @@ impl Container {
                 }
             }
             None => quote! {
-                ::camo::Attributes {
+                ::camo::core::Attributes {
                     rename: ::core::option::Option::None,
                     rename_all: ::core::option::Option::None,
                     tag: ::core::option::Option::None,
@@ -36,7 +36,7 @@ impl Container {
         let item = self.item.into_token_stream();
 
         quote! {
-            ::camo::Container {
+            ::camo::core::Container {
                 attributes: #attributes,
                 item: #item,
             }
@@ -84,14 +84,14 @@ pub enum RenameRule {
 impl RenameRule {
     fn into_token_stream(self) -> TokenStream {
         match self {
-            Self::Lower => quote!(::camo::RenameRule::LowerCase),
-            Self::Upper => quote!(::camo::RenameRule::UpperCase),
-            Self::Pascal => quote!(::camo::RenameRule::PascalCase),
-            Self::Camel => quote!(::camo::RenameRule::CamelCase),
-            Self::Snake => quote!(::camo::RenameRule::SnakeCase),
-            Self::ScreamingSnake => quote!(::camo::RenameRule::ScreamingSnakeCase),
-            Self::Kebab => quote!(::camo::RenameRule::KebabCase),
-            Self::ScreamingKebab => quote!(::camo::RenameRule::ScreamingKebabCase),
+            Self::Lower => quote!(::camo::core::RenameRule::LowerCase),
+            Self::Upper => quote!(::camo::core::RenameRule::UpperCase),
+            Self::Pascal => quote!(::camo::core::RenameRule::PascalCase),
+            Self::Camel => quote!(::camo::core::RenameRule::CamelCase),
+            Self::Snake => quote!(::camo::core::RenameRule::SnakeCase),
+            Self::ScreamingSnake => quote!(::camo::core::RenameRule::ScreamingSnakeCase),
+            Self::Kebab => quote!(::camo::core::RenameRule::KebabCase),
+            Self::ScreamingKebab => quote!(::camo::core::RenameRule::ScreamingKebabCase),
         }
     }
 }
@@ -108,13 +108,13 @@ impl Item {
             Item::Struct(ty) => {
                 let ty = ty.into_token_stream();
                 quote! {
-                    ::camo::Item::Struct(#ty)
+                    ::camo::core::Item::Struct(#ty)
                 }
             }
             Item::Enum(ty) => {
                 let ty = ty.into_token_stream();
                 quote! {
-                    ::camo::Item::Enum(#ty)
+                    ::camo::core::Item::Enum(#ty)
                 }
             }
         }
@@ -130,8 +130,8 @@ pub enum Visibility {
 impl Visibility {
     pub fn into_token_stream(self) -> TokenStream {
         match self {
-            Visibility::None => quote!(::camo::Visibility::None),
-            Visibility::Pub => quote!(::camo::Visibility::Pub),
+            Visibility::None => quote!(::camo::core::Visibility::None),
+            Visibility::Pub => quote!(::camo::core::Visibility::Pub),
         }
     }
 }
@@ -152,7 +152,7 @@ impl Struct {
         let content = self.content.into_token_stream();
 
         quote! {
-            ::camo::Struct {
+            ::camo::core::Struct {
                 visibility: #visibility,
                 name: #name,
                 arguments: Vec::from([
@@ -179,7 +179,7 @@ impl StructVariant {
                     .map(|field| field.into_token_stream())
                     .collect();
                 quote! {
-                    ::camo::StructVariant::NamedFields(
+                    ::camo::core::StructVariant::NamedFields(
                         Vec::from([
                             #(#fields),*
                         ])
@@ -189,7 +189,7 @@ impl StructVariant {
             StructVariant::UnnamedField(field) => {
                 let field = field.into_token_stream();
                 quote! {
-                    ::camo::StructVariant::UnnamedField(#field)
+                    ::camo::core::StructVariant::UnnamedField(#field)
                 }
             }
         }
@@ -207,7 +207,7 @@ impl NamedField {
         let name = self.name;
         let ty = self.ty.into_token_stream();
         quote! {
-            ::camo::NamedField {
+            ::camo::core::NamedField {
                 name: #name,
                 ty: #ty,
             }
@@ -224,7 +224,7 @@ impl UnnamedField {
     pub fn into_token_stream(self) -> TokenStream {
         let ty = self.ty.into_token_stream();
         quote! {
-            ::camo::UnnamedField {
+            ::camo::core::UnnamedField {
                 ty: #ty,
             }
         }
@@ -251,7 +251,7 @@ impl Enum {
             .collect();
 
         quote! {
-            ::camo::Enum {
+            ::camo::core::Enum {
                 visibility: #visibility,
                 name: #name,
                 arguments: Vec::from([
@@ -276,7 +276,7 @@ impl Variant {
         let name = self.name;
         let content = self.content.into_token_stream();
         quote! {
-            ::camo::Variant {
+            ::camo::core::Variant {
                 name: #name,
                 content: #content,
             }
@@ -295,18 +295,18 @@ impl VariantContent {
     fn into_token_stream(self) -> TokenStream {
         match self {
             VariantContent::Unit => quote! {
-                ::camo::VariantContent::Unit
+                ::camo::core::VariantContent::Unit
             },
             VariantContent::Unnamed(ty) => {
                 let ty = ty.into_token_stream();
                 quote! {
-                    ::camo::VariantContent::Unnamed(#ty)
+                    ::camo::core::VariantContent::Unnamed(#ty)
                 }
             }
             VariantContent::Named(fields) => {
                 let fields: Vec<_> = fields.into_iter().map(|f| f.into_token_stream()).collect();
                 quote! {
-                    ::camo::VariantContent::Named(Vec::from([
+                    ::camo::core::VariantContent::Named(Vec::from([
                         #(#fields),*
                     ]))
                 }
@@ -329,25 +329,25 @@ impl Type {
             Type::Path(ty) => {
                 let content = ty.into_token_stream();
                 quote! {
-                    ::camo::Type::Path(#content)
+                    ::camo::core::Type::Path(#content)
                 }
             }
             Type::Reference(ty) => {
                 let content = ty.into_token_stream();
                 quote! {
-                    ::camo::Type::Reference(Box::new(#content))
+                    ::camo::core::Type::Reference(Box::new(#content))
                 }
             }
             Type::Slice(ty) => {
                 let content = ty.into_token_stream();
                 quote! {
-                    ::camo::Type::Slice(Box::new(#content))
+                    ::camo::core::Type::Slice(Box::new(#content))
                 }
             }
             Type::Array(ty) => {
                 let content = ty.into_token_stream();
                 quote! {
-                    ::camo::Type::Array(Box::new(#content))
+                    ::camo::core::Type::Array(Box::new(#content))
                 }
             }
         }
@@ -368,7 +368,7 @@ impl TypePath {
             .collect();
 
         quote! {
-            ::camo::TypePath {
+            ::camo::core::TypePath {
                 segments: Vec::from([
                     #(#segments),*
                 ])
@@ -393,7 +393,7 @@ impl PathSegment {
             .collect();
 
         quote! {
-            ::camo::PathSegment {
+            ::camo::core::PathSegment {
                 name: #name,
                 arguments: Vec::from([
                     #(#arguments),*

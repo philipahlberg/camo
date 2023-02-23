@@ -1,4 +1,4 @@
-use super::ast::Container;
+use crate::ast::Container;
 
 /// Describes how to construct a type
 /// definition for a given type.

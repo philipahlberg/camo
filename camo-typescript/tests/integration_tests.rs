@@ -1,7 +1,6 @@
 #![allow(unused)]
 
-use camo::{Camo as _, Visibility};
-use camo_derive::Camo;
+use camo::{core::Camo as _, derive::Camo};
 use camo_typescript::{
     AliasType, BuiltinType, Definition, Field, Interface, IntersectionType, LiteralType,
     ObjectType, PathSegment, Type, TypeDefinition, TypePath, UnionType, Variant,

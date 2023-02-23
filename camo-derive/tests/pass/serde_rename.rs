@@ -1,4 +1,4 @@
-use camo::{Camo as _, Container, Attributes, RenameRule, Item, Struct, Visibility, StructVariant, NamedField, Type, PathSegment, TypePath};
+use camo::core::{Camo as _, Container, Attributes, RenameRule, Item, Struct, Visibility, StructVariant, NamedField, Type, PathSegment, TypePath};
 use camo_derive::Camo;
 use serde::Serialize;
 

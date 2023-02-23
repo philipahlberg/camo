@@ -1,10 +1,7 @@
-//! A crate for representing and creating Rust type definitions as values,
-//! i. e. a subset of the Rust abstract syntax.
+pub use camo_core as core;
 
-mod ast;
-mod camo;
-#[cfg(test)]
-mod tests;
+#[cfg(feature = "derive")]
+pub use camo_derive as derive;
 
-pub use crate::ast::*;
-pub use crate::camo::*;
+#[cfg(feature = "typescript")]
+pub use camo_typescript as typescript;

@@ -11,9 +11,13 @@ license = "MIT"
 categories = ["development-tools", "web-programming"]
 description = "Foreign language interface generation"
 
-[lib]
-doctest = false
-
 [dependencies]
+camo-core = { path = "../camo-core" }
+camo-derive = { path = "../camo-derive", optional = true }
+camo-typescript = { path = "../camo-typescript", optional = true }
 
 [dev-dependencies]
+
+[features]
+derive = ["camo-derive"]
+typescript = ["camo-typescript"]

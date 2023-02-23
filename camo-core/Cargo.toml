@@ -1,23 +1,19 @@
 [package]
-name = "camo-typescript"
+name = "camo-core"
 version = "0.1.1"
 authors = ["philipahlberg <philipahlberg@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/philipahlberg/camo"
 homepage = "https://github.com/philipahlberg/camo"
-documentation = "https://docs.rs/camo-typescript"
+documentation = "https://docs.rs/camo"
 readme = "README.md"
 license = "MIT"
 categories = ["development-tools", "web-programming"]
-description = "Generate TypeScript bindings for Rust types"
+description = "Core of camo, the foreign language interface generation library. Not intended to be used directly."
 
 [lib]
 doctest = false
 
 [dependencies]
-camo-core = { path = "../camo-core" }
 
 [dev-dependencies]
-camo = { path = "../camo", features = ["derive"] }
-serde = { version = "1.0.152", features = ["derive"] }
-unindent = "0.2"
