@@ -27,14 +27,14 @@ pub enum ExternallyTagged {
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum InternallyTagged {
     FirstVariant(Foo),
-    SecondVariant(Foo),
+    SecondVariant { name: String, value: i32 },
 }
 
 #[derive(Camo, Serialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
 pub enum AdjacentlyTagged {
     FirstVariant(String),
-    SecondVariant(Vec<i32>),
+    SecondVariant { values: Vec<i32> },
 }
 
 #[derive(Camo, Debug)]

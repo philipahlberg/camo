@@ -301,7 +301,7 @@ fn serde_rename_enum() {
     #[serde(rename = "camelCase")]
     enum FooBar {
         VariantOne(i32),
-        VariantTwo(String),
+        VariantTwo { value: String },
     }
 
     assert_eq!(
@@ -319,7 +319,12 @@ fn serde_rename_enum() {
                 Variant(Type::Object(ObjectType {
                     fields: Vec::from([Field {
                         name: String::from("VariantTwo"),
-                        ty: Type::Builtin(BuiltinType::String)
+                        ty: Type::Object(ObjectType {
+                            fields: Vec::from([Field {
+                                name: String::from("value"),
+                                ty: Type::Builtin(BuiltinType::String)
+                            }])
+                        })
                     }])
                 })),
             ]),
@@ -363,7 +368,7 @@ fn serde_rename_all_enum() {
     #[serde(rename_all = "camelCase")]
     enum FooBar {
         VariantOne(i32),
-        VariantTwo(String),
+        VariantTwo { value: String },
     }
 
     assert_eq!(
@@ -381,7 +386,12 @@ fn serde_rename_all_enum() {
                 Variant(Type::Object(ObjectType {
                     fields: Vec::from([Field {
                         name: String::from("variantTwo"),
-                        ty: Type::Builtin(BuiltinType::String)
+                        ty: Type::Object(ObjectType {
+                            fields: Vec::from([Field {
+                                name: String::from("value"),
+                                ty: Type::Builtin(BuiltinType::String)
+                            }])
+                        })
                     }])
                 })),
             ]),
@@ -399,7 +409,7 @@ fn enum_externally_tagged() {
         One(bool),
         Two(T),
         Three(V),
-        Four(Vec<i32>),
+        Four { values: Vec<i32> },
     }
 
     let foo: Definition = Foo::<V>::camo().into();
@@ -442,7 +452,12 @@ fn enum_externally_tagged() {
                 Variant(Type::Object(ObjectType {
                     fields: Vec::from([Field {
                         name: String::from("Four"),
-                        ty: Type::Array(Box::new(Type::Builtin(BuiltinType::Number),)),
+                        ty: Type::Object(ObjectType {
+                            fields: Vec::from([Field {
+                                name: String::from("values"),
+                                ty: Type::Array(Box::new(Type::Builtin(BuiltinType::Number),))
+                            }])
+                        }),
                     }])
                 })),
             ]),
@@ -459,7 +474,7 @@ fn enum_internally_tagged() {
     #[serde(tag = "tag")]
     enum Foo {
         VariantOne(Bar),
-        VariantTwo(Bar),
+        VariantTwo { bar: Bar },
     }
 
     let def: Definition = Foo::camo().into();
@@ -491,11 +506,16 @@ fn enum_internally_tagged() {
                             ty: Type::Literal(LiteralType::String(String::from("VariantTwo")))
                         },])
                     })),
-                    right: Box::new(Type::Path(TypePath {
-                        segments: Vec::from([PathSegment {
-                            name: "Bar",
-                            arguments: Vec::new()
-                        },])
+                    right: Box::new(Type::Object(ObjectType {
+                        fields: Vec::from([Field {
+                            name: String::from("bar"),
+                            ty: Type::Path(TypePath {
+                                segments: Vec::from([PathSegment {
+                                    name: "Bar",
+                                    arguments: Vec::new()
+                                },])
+                            })
+                        }])
                     }))
                 })),
             ])
@@ -509,7 +529,7 @@ fn enum_adjacently_tagged() {
     #[serde(tag = "tag", content = "content")]
     enum Foo {
         VariantOne(i32),
-        VariantTwo(bool),
+        VariantTwo { valid: bool },
     }
 
     let def: Definition = Foo::camo().into();
@@ -540,7 +560,12 @@ fn enum_adjacently_tagged() {
                         },
                         Field {
                             name: String::from("content"),
-                            ty: Type::Builtin(BuiltinType::Boolean)
+                            ty: Type::Object(ObjectType {
+                                fields: Vec::from([Field {
+                                    name: String::from("valid"),
+                                    ty: Type::Builtin(BuiltinType::Boolean),
+                                }])
+                            })
                         },
                     ])
                 })),

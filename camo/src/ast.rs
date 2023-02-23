@@ -87,9 +87,14 @@ pub struct Variant {
     /// The name of the variant.
     pub name: &'static str,
     /// The content of the variant.
-    ///
-    /// This is `None` for unit variants.
-    pub content: Option<Type>,
+    pub content: VariantContent,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum VariantContent {
+    Unit,
+    Unnamed(Type),
+    Named(Vec<NamedField>),
 }
 
 /// Represents a type use, e. g. in a struct definition,

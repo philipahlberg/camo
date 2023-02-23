@@ -1,4 +1,4 @@
-use camo::{Camo as _, Container, Attributes, Item, Enum, Variant, Type, PathSegment, TypePath};
+use camo::{Camo as _, Container, Attributes, Item, Enum, Variant, VariantContent, Type, PathSegment, TypePath};
 use camo_derive::Camo;
 use serde::Serialize;
 
@@ -31,14 +31,14 @@ fn main() {
                 variants: Vec::from([
                     Variant {
                         name: "U32",
-                        content: Some(Type::Path(TypePath::from([PathSegment {
+                        content: VariantContent::Unnamed(Type::Path(TypePath::from([PathSegment {
                             name: "u32",
                             arguments: Vec::new(),
                         }])))
                     },
                     Variant {
                         name: "Bar",
-                        content: Some(Type::Path(TypePath::from([PathSegment {
+                        content: VariantContent::Unnamed(Type::Path(TypePath::from([PathSegment {
                             name: "Bar",
                             arguments: Vec::new(),
                         }])))

@@ -252,22 +252,48 @@ impl Enum {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Variant {
     pub name: String,
-    pub content: Option<Type>,
+    pub content: VariantContent,
 }
 
 impl Variant {
     fn into_token_stream(self) -> TokenStream {
         let name = self.name;
-        let content = if let Some(ty) = self.content {
-            let ty = ty.into_token_stream();
-            quote! {::core::option::Option::Some(#ty)}
-        } else {
-            quote! {::core::option::Option::None}
-        };
+        let content = self.content.into_token_stream();
         quote! {
             ::camo::Variant {
                 name: #name,
                 content: #content,
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum VariantContent {
+    Unit,
+    Unnamed(Type),
+    Named(Vec<NamedField>),
+}
+
+impl VariantContent {
+    fn into_token_stream(self) -> TokenStream {
+        match self {
+            VariantContent::Unit => quote! {
+                ::camo::VariantContent::Unit
+            },
+            VariantContent::Unnamed(ty) => {
+                let ty = ty.into_token_stream();
+                quote! {
+                    ::camo::VariantContent::Unnamed(#ty)
+                }
+            }
+            VariantContent::Named(fields) => {
+                let fields: Vec<_> = fields.into_iter().map(|f| f.into_token_stream()).collect();
+                quote! {
+                    ::camo::VariantContent::Named(Vec::from([
+                        #(#fields),*
+                    ]))
+                }
             }
         }
     }

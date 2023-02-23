@@ -22,7 +22,6 @@ pub enum ErrorKind {
     Lifetimes,
     ConstGenerics,
     ExplicicitDiscriminant,
-    EnumNamedFields,
     EnumMultipleUnnamedFields,
     StructMultipleUnnamedFields,
     FunctionTypes,
@@ -42,7 +41,6 @@ impl ErrorKind {
             Self::Lifetimes => "`camo` does not support lifetimes",
             Self::ConstGenerics => "`camo` does not support const generics",
             Self::ExplicicitDiscriminant => "`camo` does not support explicit discriminants",
-            Self::EnumNamedFields => "`camo` does not support named fields in enums",
             Self::EnumMultipleUnnamedFields => {
                 "`camo` does not support multiple unnamed fields in enums"
             }
@@ -360,46 +358,48 @@ fn build_enum(name: Ident, generics: &Generics, data: &DataEnum) -> Result<ast::
 }
 
 fn build_variants(variants: &Punctuated<Variant, Comma>) -> Result<Vec<ast::Variant>, Error> {
-    let mut result = Vec::new();
-
-    for variant in variants {
-        if let Some((_, expr)) = &variant.discriminant {
-            return Err(Error {
-                kind: ErrorKind::ExplicicitDiscriminant,
-                span: expr.span(),
-            });
-        }
-
-        match &variant.fields {
-            Fields::Named(..) => {
+    variants
+        .into_iter()
+        .map(|variant| {
+            if let Some((_, expr)) = &variant.discriminant {
                 return Err(Error {
-                    kind: ErrorKind::EnumNamedFields,
-                    span: variant.fields.span(),
+                    kind: ErrorKind::ExplicicitDiscriminant,
+                    span: expr.span(),
                 });
             }
-            Fields::Unnamed(fields) => {
-                if fields.unnamed.len() > 1 {
-                    return Err(Error {
-                        kind: ErrorKind::EnumMultipleUnnamedFields,
-                        span: fields.span(),
-                    });
-                }
-                let field = fields.unnamed.first().unwrap();
-                result.push(ast::Variant {
-                    name: variant.ident.to_string(),
-                    content: Some(build_type(&field.ty)?),
-                });
-            }
-            Fields::Unit => {
-                result.push(ast::Variant {
-                    name: variant.ident.to_string(),
-                    content: None,
-                });
-            }
-        }
-    }
 
-    Ok(result)
+            let content = match &variant.fields {
+                Fields::Named(fields) => Ok(ast::VariantContent::Named(
+                    fields
+                        .named
+                        .iter()
+                        .map(|field| {
+                            Ok(ast::NamedField {
+                                name: field.ident.as_ref().unwrap().to_string(),
+                                ty: build_type(&field.ty)?,
+                            })
+                        })
+                        .collect::<Result<_, _>>()?,
+                )),
+                Fields::Unnamed(fields) => {
+                    if fields.unnamed.len() > 1 {
+                        return Err(Error {
+                            kind: ErrorKind::EnumMultipleUnnamedFields,
+                            span: fields.span(),
+                        });
+                    }
+                    let field = fields.unnamed.first().unwrap();
+                    Ok(ast::VariantContent::Unnamed(build_type(&field.ty)?))
+                }
+                Fields::Unit => Ok(ast::VariantContent::Unit),
+            }?;
+
+            Ok(ast::Variant {
+                name: variant.ident.to_string(),
+                content,
+            })
+        })
+        .collect()
 }
 
 fn build_type(ty: &syn::Type) -> Result<ast::Type, Error> {

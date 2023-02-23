@@ -5,6 +5,7 @@ fn tests() {
     let cases = TestCases::new();
     cases.pass("tests/cases/struct.rs");
     cases.pass("tests/cases/enum.rs");
+    cases.pass("tests/cases/enum_named_fields.rs");
     cases.pass("tests/cases/generics.rs");
     cases.pass("tests/cases/newtype.rs");
     cases.pass("tests/cases/serde_rename.rs");
@@ -14,7 +15,6 @@ fn tests() {
     cases.compile_fail("tests/cases/lifetimes.rs");
     cases.compile_fail("tests/cases/const_generics.rs");
     cases.compile_fail("tests/cases/explicit_discriminant.rs");
-    cases.compile_fail("tests/cases/enum_named_fields.rs");
     cases.compile_fail("tests/cases/enum_multiple_unnamed_fields.rs");
     cases.compile_fail("tests/cases/struct_unnamed_fields.rs");
     cases.compile_fail("tests/cases/function_types.rs");

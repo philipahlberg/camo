@@ -337,25 +337,46 @@ pub struct Variant(pub Type);
 
 impl Variant {
     fn externally_tagged(rename_all: Option<RenameRule>, variant: camo::Variant) -> Self {
-        if let Some(content) = variant.content {
-            Variant(Type::Object(ObjectType {
+        match variant.content {
+            camo::VariantContent::Unit => Self(Type::Literal(LiteralType::String(
+                if let Some(rule) = rename_all {
+                    apply_rename_rule_to_type_name(rule, variant.name)
+                } else {
+                    String::from(variant.name)
+                },
+            ))),
+            camo::VariantContent::Unnamed(ty) => Self(Type::Object(ObjectType {
                 fields: Vec::from([Field {
                     name: if let Some(rule) = rename_all {
                         apply_rename_rule_to_type_name(rule, variant.name)
                     } else {
                         variant.name.to_string()
                     },
-                    ty: Type::from(content),
+                    ty: Type::from(ty),
                 }]),
-            }))
-        } else {
-            Self(Type::Literal(LiteralType::String(
-                if let Some(rule) = rename_all {
-                    apply_rename_rule_to_type_name(rule, variant.name)
-                } else {
-                    String::from(variant.name)
-                },
-            )))
+            })),
+            camo::VariantContent::Named(fields) => Self(Type::Object(ObjectType {
+                fields: Vec::from([Field {
+                    name: if let Some(rule) = rename_all {
+                        apply_rename_rule_to_type_name(rule, variant.name)
+                    } else {
+                        variant.name.to_string()
+                    },
+                    ty: Type::Object(ObjectType {
+                        fields: fields
+                            .into_iter()
+                            .map(|field| Field {
+                                name: if let Some(rule) = rename_all {
+                                    apply_rename_rule_to_field_name(rule, field.name)
+                                } else {
+                                    field.name.to_string()
+                                },
+                                ty: Type::from(field.ty),
+                            })
+                            .collect(),
+                    }),
+                }]),
+            })),
         }
     }
 
@@ -365,8 +386,18 @@ impl Variant {
         content_name: &'static str,
         variant: camo::Variant,
     ) -> Self {
-        if let Some(content) = variant.content {
-            Self(Type::Object(ObjectType {
+        match variant.content {
+            camo::VariantContent::Unit => Self(Type::Object(ObjectType {
+                fields: Vec::from([Field {
+                    name: String::from(tag_name),
+                    ty: Type::Literal(LiteralType::String(if let Some(rule) = rename_all {
+                        apply_rename_rule_to_type_name(rule, variant.name)
+                    } else {
+                        variant.name.to_string()
+                    })),
+                }]),
+            })),
+            camo::VariantContent::Unnamed(ty) => Self(Type::Object(ObjectType {
                 fields: Vec::from([
                     Field {
                         name: String::from(tag_name),
@@ -378,21 +409,38 @@ impl Variant {
                     },
                     Field {
                         name: String::from(content_name),
-                        ty: Type::from(content),
+                        ty: Type::from(ty),
                     },
                 ]),
-            }))
-        } else {
-            Self(Type::Object(ObjectType {
-                fields: Vec::from([Field {
-                    name: String::from(tag_name),
-                    ty: Type::Literal(LiteralType::String(if let Some(rule) = rename_all {
-                        apply_rename_rule_to_type_name(rule, variant.name)
-                    } else {
-                        variant.name.to_string()
-                    })),
-                }]),
-            }))
+            })),
+            camo::VariantContent::Named(fields) => Self(Type::Object(ObjectType {
+                fields: Vec::from([
+                    Field {
+                        name: String::from(tag_name),
+                        ty: Type::Literal(LiteralType::String(if let Some(rule) = rename_all {
+                            apply_rename_rule_to_type_name(rule, variant.name)
+                        } else {
+                            variant.name.to_string()
+                        })),
+                    },
+                    Field {
+                        name: String::from(content_name),
+                        ty: Type::Object(ObjectType {
+                            fields: fields
+                                .into_iter()
+                                .map(|field| Field {
+                                    name: if let Some(rule) = rename_all {
+                                        apply_rename_rule_to_field_name(rule, field.name)
+                                    } else {
+                                        field.name.to_string()
+                                    },
+                                    ty: Type::from(field.ty),
+                                })
+                                .collect(),
+                        }),
+                    },
+                ]),
+            })),
         }
     }
 
@@ -401,8 +449,18 @@ impl Variant {
         tag: &'static str,
         variant: camo::Variant,
     ) -> Self {
-        if let Some(content) = variant.content {
-            Variant(Type::Intersection(IntersectionType {
+        match variant.content {
+            camo::VariantContent::Unit => Self(Type::Object(ObjectType {
+                fields: Vec::from([Field {
+                    name: String::from(tag),
+                    ty: Type::Literal(LiteralType::String(if let Some(rule) = rename_all {
+                        apply_rename_rule_to_type_name(rule, variant.name)
+                    } else {
+                        String::from(variant.name)
+                    })),
+                }]),
+            })),
+            camo::VariantContent::Unnamed(ty) => Self(Type::Intersection(IntersectionType {
                 left: Box::new(Type::Object(ObjectType {
                     fields: Vec::from([Field {
                         name: String::from(tag),
@@ -413,19 +471,33 @@ impl Variant {
                         })),
                     }]),
                 })),
-                right: Box::new(Type::from(content)),
-            }))
-        } else {
-            Self(Type::Object(ObjectType {
-                fields: Vec::from([Field {
-                    name: String::from(tag),
-                    ty: Type::Literal(LiteralType::String(if let Some(rule) = rename_all {
-                        apply_rename_rule_to_type_name(rule, variant.name)
-                    } else {
-                        String::from(variant.name)
-                    })),
-                }]),
-            }))
+                right: Box::new(Type::from(ty)),
+            })),
+            camo::VariantContent::Named(fields) => Self(Type::Intersection(IntersectionType {
+                left: Box::new(Type::Object(ObjectType {
+                    fields: Vec::from([Field {
+                        name: String::from(tag),
+                        ty: Type::Literal(LiteralType::String(if let Some(rule) = rename_all {
+                            apply_rename_rule_to_type_name(rule, variant.name)
+                        } else {
+                            variant.name.to_string()
+                        })),
+                    }]),
+                })),
+                right: Box::new(Type::Object(ObjectType {
+                    fields: fields
+                        .into_iter()
+                        .map(|field| Field {
+                            name: if let Some(rule) = rename_all {
+                                apply_rename_rule_to_field_name(rule, field.name)
+                            } else {
+                                field.name.to_string()
+                            },
+                            ty: Type::from(field.ty),
+                        })
+                        .collect(),
+                })),
+            })),
         }
     }
 }
