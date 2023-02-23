@@ -10,3 +10,4 @@ camo = { path = "../../camo" }
 camo-derive = { path = "../../camo-derive" }
 camo-typescript = { path = "../../camo-typescript" }
 serde = { version = "1.0.152", features = ["derive"] }
+clap = { version = "4.1.6", features = ["derive"] }

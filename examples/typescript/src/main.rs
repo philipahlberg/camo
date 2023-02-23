@@ -1,64 +1,82 @@
 #![allow(dead_code)]
 
 use camo::Camo as _;
-use camo_derive::Camo;
 use camo_typescript::Definition;
-use serde::Serialize;
+use clap::Parser;
 use std::fs::File;
 use std::io::Write as _;
 
-#[derive(Camo, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Foo {
-    field_one: u32,
-    field_two: bool,
-    field_three: String,
-    field_four: Vec<i32>,
+mod types {
+    use camo_derive::Camo;
+    use serde::Serialize;
+
+    #[derive(Camo, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct Foo {
+        field_one: u32,
+        field_two: bool,
+        field_three: String,
+        field_four: Vec<i32>,
+    }
+
+    #[derive(Camo, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub enum ExternallyTagged {
+        FirstVariant(String),
+        SecondVariant(Vec<i32>),
+    }
+
+    #[derive(Camo, Serialize)]
+    #[serde(rename_all = "camelCase", tag = "type")]
+    pub enum InternallyTagged {
+        FirstVariant(Foo),
+        SecondVariant { name: String, value: i32 },
+    }
+
+    #[derive(Camo, Serialize)]
+    #[serde(rename_all = "camelCase", tag = "type", content = "value")]
+    pub enum AdjacentlyTagged {
+        FirstVariant(String),
+        SecondVariant { values: Vec<i32> },
+    }
+
+    #[derive(Camo, Debug)]
+    pub struct NewType(i32);
+
+    #[derive(Camo, Debug)]
+    pub struct Generic<T>(T);
 }
 
-#[derive(Camo, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum ExternallyTagged {
-    FirstVariant(String),
-    SecondVariant(Vec<i32>),
+#[derive(Parser)]
+enum Command {
+    Print,
+    Export { path: String },
 }
-
-#[derive(Camo, Serialize)]
-#[serde(rename_all = "camelCase", tag = "type")]
-pub enum InternallyTagged {
-    FirstVariant(Foo),
-    SecondVariant { name: String, value: i32 },
-}
-
-#[derive(Camo, Serialize)]
-#[serde(rename_all = "camelCase", tag = "type", content = "value")]
-pub enum AdjacentlyTagged {
-    FirstVariant(String),
-    SecondVariant { values: Vec<i32> },
-}
-
-#[derive(Camo, Debug)]
-struct NewType(i32);
-
-#[derive(Camo, Debug)]
-struct Generic<T>(T);
 
 fn main() -> std::result::Result<(), std::io::Error> {
-    let mut file = File::create("types.ts")?;
-
     struct T;
-    let types: &[Definition] = &[
-        Foo::camo().into(),
-        ExternallyTagged::camo().into(),
-        InternallyTagged::camo().into(),
-        AdjacentlyTagged::camo().into(),
-        NewType::camo().into(),
-        Generic::<T>::camo().into(),
+    let exports: &[Definition] = &[
+        types::Foo::camo().into(),
+        types::ExternallyTagged::camo().into(),
+        types::InternallyTagged::camo().into(),
+        types::AdjacentlyTagged::camo().into(),
+        types::NewType::camo().into(),
+        types::Generic::<T>::camo().into(),
     ];
 
-    for ty in types {
-        writeln!(file, "{}", ty).unwrap();
-    }
+    match Command::parse() {
+        Command::Print => {
+            for ty in exports {
+                println!("{}", ty);
+            }
+        }
+        Command::Export { path } => {
+            let mut file = File::create(path)?;
+            for ty in exports {
+                writeln!(file, "{}", ty)?;
+            }
+        }
+    };
 
     Ok(())
 }
