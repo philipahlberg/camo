@@ -1,10 +1,10 @@
 #![allow(unused)]
 
-use camo::Camo as _;
+use camo::{Camo as _, Visibility};
 use camo_derive::Camo;
 use camo_typescript::{
-    BuiltinType, Definition, Field, Interface, IntersectionType, LiteralType, ObjectType,
-    PathSegment, Type, TypeDefinition, TypePath, UnionType, Variant,
+    AliasType, BuiltinType, Definition, Field, Interface, IntersectionType, LiteralType,
+    ObjectType, PathSegment, Type, TypeDefinition, TypePath, UnionType, Variant,
 };
 use serde::{Deserialize, Serialize};
 
@@ -18,6 +18,7 @@ fn implements_from() {
     assert_eq!(
         Definition::from(Foo::camo()),
         Definition::Interface(Interface {
+            export: false,
             name: String::from("Foo"),
             parameters: Vec::new(),
             fields: vec![Field {
@@ -40,6 +41,7 @@ fn supports_booleans() {
     assert_eq!(
         foo,
         Definition::Interface(Interface {
+            export: false,
             name: String::from("Foo"),
             parameters: Vec::new(),
             fields: vec![Field {
@@ -64,6 +66,7 @@ fn supports_numbers() {
     assert_eq!(
         foo,
         Definition::Interface(Interface {
+            export: false,
             name: String::from("Foo"),
             parameters: Vec::new(),
             fields: vec![
@@ -96,6 +99,7 @@ fn supports_chars() {
     assert_eq!(
         foo,
         Definition::Interface(Interface {
+            export: false,
             name: String::from("Foo"),
             parameters: Vec::new(),
             fields: vec![Field {
@@ -118,6 +122,7 @@ fn supports_string() {
     assert_eq!(
         foo,
         Definition::Interface(Interface {
+            export: false,
             name: String::from("Foo"),
             parameters: Vec::new(),
             fields: vec![Field {
@@ -140,6 +145,7 @@ fn supports_vec() {
     assert_eq!(
         foo,
         Definition::Interface(Interface {
+            export: false,
             name: String::from("Foo"),
             parameters: Vec::new(),
             fields: vec![Field {
@@ -162,6 +168,7 @@ fn supports_slice() {
     assert_eq!(
         foo,
         Definition::Interface(Interface {
+            export: false,
             name: String::from("Foo"),
             parameters: Vec::new(),
             fields: vec![Field {
@@ -184,6 +191,7 @@ fn supports_array() {
     assert_eq!(
         foo,
         Definition::Interface(Interface {
+            export: false,
             name: String::from("Foo"),
             parameters: Vec::new(),
             fields: vec![Field {
@@ -195,10 +203,49 @@ fn supports_array() {
 }
 
 #[test]
+fn display_alias_type() {
+    use unindent::Unindent;
+
+    let def = AliasType {
+        export: true,
+        name: String::from("Foo"),
+        parameters: Vec::from(["K"]),
+        ty: Type::Object(ObjectType {
+            fields: Vec::from([
+                Field {
+                    name: String::from("k"),
+                    ty: Type::Path(TypePath {
+                        segments: Vec::from([PathSegment {
+                            name: "K",
+                            arguments: Vec::new(),
+                        }]),
+                    }),
+                },
+                Field {
+                    name: String::from("n"),
+                    ty: Type::Builtin(BuiltinType::Number),
+                },
+            ]),
+        }),
+    };
+
+    let result = format!("{}", def);
+
+    assert_eq!(
+        result,
+        "
+        export type Foo<K> = { k: K; n: number; };
+        "
+        .unindent()
+    );
+}
+
+#[test]
 fn display_interface() {
     use unindent::Unindent;
 
     let def = Interface {
+        export: true,
         name: String::from("Foo"),
         parameters: Vec::from(["K"]),
         fields: vec![
@@ -223,7 +270,7 @@ fn display_interface() {
     assert_eq!(
         result,
         "
-        interface Foo<K> {
+        export interface Foo<K> {
         \tfoo: number;
         \tbar: K;
         }
@@ -237,6 +284,7 @@ fn display_enum() {
     use unindent::Unindent;
 
     let def = UnionType {
+        export: true,
         name: String::from("Foo"),
         parameters: Vec::from(["T"]),
         variants: Vec::from([
@@ -256,7 +304,7 @@ fn display_enum() {
     assert_eq!(
         result,
         "
-        type Foo<T> =
+        export type Foo<T> =
         \t| number
         \t| boolean
         \t| T;
@@ -279,6 +327,7 @@ fn serde_rename_struct() {
     assert_eq!(
         def,
         Definition::Interface(Interface {
+            export: false,
             name: String::from("fooBar"),
             parameters: Vec::new(),
             fields: Vec::from([
@@ -307,6 +356,7 @@ fn serde_rename_enum() {
     assert_eq!(
         Definition::from(FooBar::camo()),
         Definition::Type(TypeDefinition::Union(UnionType {
+            export: false,
             name: String::from("fooBar"),
             parameters: Vec::new(),
             variants: Vec::from([
@@ -346,6 +396,7 @@ fn serde_rename_all_struct() {
     assert_eq!(
         def,
         Definition::Interface(Interface {
+            export: false,
             name: String::from("Foo"),
             parameters: Vec::new(),
             fields: Vec::from([
@@ -374,6 +425,7 @@ fn serde_rename_all_enum() {
     assert_eq!(
         Definition::from(FooBar::camo()),
         Definition::Type(TypeDefinition::Union(UnionType {
+            export: false,
             name: String::from("FooBar"),
             parameters: Vec::new(),
             variants: Vec::from([
@@ -417,6 +469,7 @@ fn enum_externally_tagged() {
     assert_eq!(
         foo,
         Definition::Type(camo_typescript::TypeDefinition::Union(UnionType {
+            export: false,
             name: String::from("Foo"),
             parameters: Vec::from(["T"]),
             variants: Vec::from([
@@ -482,6 +535,7 @@ fn enum_internally_tagged() {
     assert_eq!(
         def,
         Definition::Type(TypeDefinition::Union(UnionType {
+            export: false,
             name: String::from("Foo"),
             parameters: Vec::new(),
             variants: Vec::from([
@@ -537,6 +591,7 @@ fn enum_adjacently_tagged() {
     assert_eq!(
         def,
         Definition::Type(TypeDefinition::Union(UnionType {
+            export: false,
             name: String::from("Foo"),
             parameters: Vec::new(),
             variants: Vec::from([

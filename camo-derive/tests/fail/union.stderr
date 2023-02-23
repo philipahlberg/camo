@@ -1,5 +1,5 @@
 error: `camo` does not support unions
- --> tests/cases/union.rs:4:1
+ --> tests/fail/union.rs:4:1
   |
 4 | union Foo {
   | ^^^^^

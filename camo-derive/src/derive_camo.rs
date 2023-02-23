@@ -5,7 +5,7 @@ use syn::spanned::Spanned;
 use syn::token::Comma;
 use syn::{
     AttrStyle, Data, DataEnum, DataStruct, DeriveInput, Fields, GenericArgument, GenericParam,
-    Generics, ImplGenerics, Meta, MetaList, PathArguments, TypeGenerics, Variant, WhereClause,
+    Generics, Meta, MetaList, PathArguments, Variant, Visibility,
 };
 
 use crate::ast;
@@ -30,6 +30,8 @@ pub enum ErrorKind {
     MiscTypes,
     Syn(syn::Error),
     InvalidRenameRule,
+    VisibilityCrate,
+    VisibilityRestricted,
 }
 
 impl ErrorKind {
@@ -53,12 +55,14 @@ impl ErrorKind {
             Self::MiscTypes => "`camo` does not support this type",
             Self::Syn(_) => "`camo`: failed to parse attribute",
             Self::InvalidRenameRule => "`camo`: invalid rename rule",
+            Self::VisibilityCrate => "`camo` does not support `crate` visibility",
+            Self::VisibilityRestricted => "`camo` does not support restricted visibility",
         }
     }
 }
 
 pub fn derive_camo(input: DeriveInput) -> TokenStream {
-    match Impl::from_input(&input) {
+    match Impl::from_input(input) {
         Ok(v) => v.into_token_stream(),
         Err(error) => {
             if let ErrorKind::Syn(err) = error.kind {
@@ -70,36 +74,32 @@ pub fn derive_camo(input: DeriveInput) -> TokenStream {
     }
 }
 
-struct Impl<'a> {
+struct Impl {
     name: Ident,
-    impl_generics: ImplGenerics<'a>,
-    ty_generics: TypeGenerics<'a>,
-    where_clause: Option<&'a WhereClause>,
+    generics: Generics,
     container: ast::Container,
 }
 
-impl<'a> Impl<'a> {
-    fn from_input(input: &'a DeriveInput) -> Result<Self, Error> {
-        let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+impl Impl {
+    fn from_input(input: DeriveInput) -> Result<Self, Error> {
+        let name = input.ident.clone();
+        let generics = input.generics.clone();
         let container = ast::Container::from_input(input)?;
         Ok(Self {
-            name: input.ident.clone(),
-            impl_generics,
-            ty_generics,
-            where_clause,
+            name,
+            generics,
             container,
         })
     }
 
     fn into_token_stream(self) -> TokenStream {
-        let container = self.container.into_token_stream();
         let Self {
             name,
-            impl_generics,
-            ty_generics,
-            where_clause,
-            ..
+            generics,
+            container,
         } = self;
+        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+        let container = container.into_token_stream();
         quote! {
             #[automatically_derived]
             impl #impl_generics ::camo::Camo for #name #ty_generics #where_clause {
@@ -112,7 +112,7 @@ impl<'a> Impl<'a> {
 }
 
 impl ast::Container {
-    fn from_input(input: &DeriveInput) -> Result<Self, Error> {
+    fn from_input(input: DeriveInput) -> Result<Self, Error> {
         let meta = input
             .attrs
             .iter()
@@ -144,7 +144,7 @@ impl ast::Container {
 
         let serde = meta.map(ast::SerdeAttributes::from_meta_list).transpose()?;
 
-        let item = build_item(input.ident.clone(), &input.generics, &input.data)?;
+        let item = build_item(input)?;
 
         Ok(Self { serde, item })
     }
@@ -264,10 +264,17 @@ impl ast::RenameRule {
     }
 }
 
-fn build_item(name: Ident, generics: &Generics, data: &Data) -> Result<ast::Item, Error> {
-    match data {
-        Data::Struct(data) => Ok(ast::Item::Struct(build_struct(name, generics, data)?)),
-        Data::Enum(data) => Ok(ast::Item::Enum(build_enum(name, generics, data)?)),
+fn build_item(input: DeriveInput) -> Result<ast::Item, Error> {
+    let name = input.ident;
+    let generics = input.generics;
+    let visibility = input.vis;
+    match input.data {
+        Data::Struct(data) => Ok(ast::Item::Struct(build_struct(
+            visibility, name, generics, data,
+        )?)),
+        Data::Enum(data) => Ok(ast::Item::Enum(build_enum(
+            visibility, name, generics, data,
+        )?)),
         Data::Union(data) => Err(Error {
             kind: ErrorKind::Union,
             span: data.union_token.span(),
@@ -275,15 +282,36 @@ fn build_item(name: Ident, generics: &Generics, data: &Data) -> Result<ast::Item
     }
 }
 
-fn build_struct(name: Ident, generics: &Generics, data: &DataStruct) -> Result<ast::Struct, Error> {
+fn build_visibility(visibility: Visibility) -> Result<ast::Visibility, Error> {
+    match visibility {
+        Visibility::Public(_) => Ok(ast::Visibility::Pub),
+        Visibility::Crate(_) => Err(Error {
+            kind: ErrorKind::VisibilityCrate,
+            span: visibility.span(),
+        }),
+        Visibility::Restricted(_) => Err(Error {
+            kind: ErrorKind::VisibilityRestricted,
+            span: visibility.span(),
+        }),
+        Visibility::Inherited => Ok(ast::Visibility::None),
+    }
+}
+
+fn build_struct(
+    visibility: Visibility,
+    name: Ident,
+    generics: Generics,
+    data: DataStruct,
+) -> Result<ast::Struct, Error> {
     Ok(ast::Struct {
+        visibility: build_visibility(visibility)?,
         name: name.to_string(),
         arguments: build_parameters(generics)?,
-        content: build_fields(&data.fields)?,
+        content: build_fields(data.fields)?,
     })
 }
 
-fn build_parameters(generics: &Generics) -> Result<Vec<String>, Error> {
+fn build_parameters(generics: Generics) -> Result<Vec<String>, Error> {
     generics
         .params
         .iter()
@@ -309,16 +337,16 @@ fn build_parameters(generics: &Generics) -> Result<Vec<String>, Error> {
         .collect()
 }
 
-fn build_fields(fields: &Fields) -> Result<ast::StructVariant, Error> {
+fn build_fields(fields: Fields) -> Result<ast::StructVariant, Error> {
     match fields {
-        Fields::Named(ref fields) => {
+        Fields::Named(fields) => {
             let fields: Result<_, _> = fields
                 .named
-                .iter()
+                .into_iter()
                 .map(|field| {
                     Ok(ast::NamedField {
                         name: field.ident.as_ref().expect("named field").to_string(),
-                        ty: build_type(&field.ty)?,
+                        ty: build_type(field.ty)?,
                     })
                 })
                 .collect();
@@ -331,14 +359,15 @@ fn build_fields(fields: &Fields) -> Result<ast::StructVariant, Error> {
                     span: fields.span(),
                 });
             }
-            if let Some(field) = fields.unnamed.first() {
+            let span = fields.span();
+            if let Some(field) = fields.unnamed.into_iter().next() {
                 Ok(ast::StructVariant::UnnamedField(ast::UnnamedField {
-                    ty: build_type(&field.ty)?,
+                    ty: build_type(field.ty)?,
                 }))
             } else {
                 Err(Error {
                     kind: ErrorKind::UnitStruct,
-                    span: fields.span(),
+                    span,
                 })
             }
         }
@@ -349,34 +378,40 @@ fn build_fields(fields: &Fields) -> Result<ast::StructVariant, Error> {
     }
 }
 
-fn build_enum(name: Ident, generics: &Generics, data: &DataEnum) -> Result<ast::Enum, Error> {
+fn build_enum(
+    visibility: Visibility,
+    name: Ident,
+    generics: Generics,
+    data: DataEnum,
+) -> Result<ast::Enum, Error> {
     Ok(ast::Enum {
+        visibility: build_visibility(visibility)?,
         name: name.to_string(),
         arguments: build_parameters(generics)?,
-        variants: build_variants(&data.variants)?,
+        variants: build_variants(data.variants)?,
     })
 }
 
-fn build_variants(variants: &Punctuated<Variant, Comma>) -> Result<Vec<ast::Variant>, Error> {
+fn build_variants(variants: Punctuated<Variant, Comma>) -> Result<Vec<ast::Variant>, Error> {
     variants
         .into_iter()
         .map(|variant| {
-            if let Some((_, expr)) = &variant.discriminant {
+            if let Some((_, expr)) = variant.discriminant {
                 return Err(Error {
                     kind: ErrorKind::ExplicicitDiscriminant,
                     span: expr.span(),
                 });
             }
 
-            let content = match &variant.fields {
+            let content = match variant.fields {
                 Fields::Named(fields) => Ok(ast::VariantContent::Named(
                     fields
                         .named
-                        .iter()
+                        .into_iter()
                         .map(|field| {
                             Ok(ast::NamedField {
                                 name: field.ident.as_ref().unwrap().to_string(),
-                                ty: build_type(&field.ty)?,
+                                ty: build_type(field.ty)?,
                             })
                         })
                         .collect::<Result<_, _>>()?,
@@ -388,8 +423,8 @@ fn build_variants(variants: &Punctuated<Variant, Comma>) -> Result<Vec<ast::Vari
                             span: fields.span(),
                         });
                     }
-                    let field = fields.unnamed.first().unwrap();
-                    Ok(ast::VariantContent::Unnamed(build_type(&field.ty)?))
+                    let field = fields.unnamed.into_iter().next().unwrap();
+                    Ok(ast::VariantContent::Unnamed(build_type(field.ty)?))
                 }
                 Fields::Unit => Ok(ast::VariantContent::Unit),
             }?;
@@ -402,20 +437,20 @@ fn build_variants(variants: &Punctuated<Variant, Comma>) -> Result<Vec<ast::Vari
         .collect()
 }
 
-fn build_type(ty: &syn::Type) -> Result<ast::Type, Error> {
+fn build_type(ty: syn::Type) -> Result<ast::Type, Error> {
     match ty {
-        syn::Type::Slice(ty) => Ok(ast::Type::Slice(Box::new(build_type(&ty.elem)?))),
-        syn::Type::Array(ty) => Ok(ast::Type::Array(Box::new(build_type(&ty.elem)?))),
+        syn::Type::Slice(ty) => Ok(ast::Type::Slice(Box::new(build_type(*ty.elem)?))),
+        syn::Type::Array(ty) => Ok(ast::Type::Array(Box::new(build_type(*ty.elem)?))),
         syn::Type::BareFn(ty) => Err(Error {
             kind: ErrorKind::FunctionTypes,
             span: ty.span(),
         }),
-        syn::Type::Group(ty) => build_type(&ty.elem),
+        syn::Type::Group(ty) => build_type(*ty.elem),
         syn::Type::Macro(_) => Err(Error {
             kind: ErrorKind::Macros,
             span: ty.span(),
         }),
-        syn::Type::Paren(ty) => build_type(&ty.elem),
+        syn::Type::Paren(ty) => build_type(*ty.elem),
         syn::Type::Path(ty) => {
             if let Some(q) = &ty.qself {
                 return Err(Error {
@@ -427,11 +462,11 @@ fn build_type(ty: &syn::Type) -> Result<ast::Type, Error> {
             let segments: Vec<_> = ty
                 .path
                 .segments
-                .iter()
+                .into_iter()
                 .map(|segment| {
                     Ok(ast::PathSegment {
                         name: segment.ident.to_string(),
-                        arguments: build_type_arguments(&segment.arguments)?,
+                        arguments: build_type_arguments(segment.arguments)?,
                     })
                 })
                 .collect::<Result<_, _>>()?;
@@ -440,7 +475,7 @@ fn build_type(ty: &syn::Type) -> Result<ast::Type, Error> {
 
             Ok(ast::Type::Path(path))
         }
-        syn::Type::Reference(ty) => Ok(ast::Type::Reference(Box::new(build_type(&ty.elem)?))),
+        syn::Type::Reference(ty) => Ok(ast::Type::Reference(Box::new(build_type(*ty.elem)?))),
         syn::Type::Infer(_)
         | syn::Type::Never(_)
         | syn::Type::ImplTrait(_)
@@ -458,12 +493,12 @@ fn build_type(ty: &syn::Type) -> Result<ast::Type, Error> {
     }
 }
 
-fn build_type_arguments(arguments: &PathArguments) -> Result<Vec<ast::Type>, Error> {
+fn build_type_arguments(arguments: PathArguments) -> Result<Vec<ast::Type>, Error> {
     match arguments {
         PathArguments::None => Ok(Vec::new()),
         PathArguments::AngleBracketed(arguments) => arguments
             .args
-            .iter()
+            .into_iter()
             .map(|argument| match argument {
                 GenericArgument::Lifetime(lifetime) => Err(Error {
                     kind: ErrorKind::Lifetimes,

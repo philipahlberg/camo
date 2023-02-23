@@ -1,5 +1,5 @@
 error: `camo` does not support explicit discriminants
- --> tests/cases/explicit_discriminant.rs:5:11
+ --> tests/fail/explicit_discriminant.rs:5:11
   |
 5 |     One = 1,
   |           ^

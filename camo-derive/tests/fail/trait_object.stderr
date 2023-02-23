@@ -1,5 +1,5 @@
 error: `camo` does not support this type
- --> tests/cases/trait_object.rs:5:8
+ --> tests/fail/trait_object.rs:5:8
   |
 5 |     x: dyn std::fmt::Debug,
   |        ^^^

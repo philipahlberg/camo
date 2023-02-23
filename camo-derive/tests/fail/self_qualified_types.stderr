@@ -1,5 +1,5 @@
 error: `camo` does not support self-qualified types in paths
- --> tests/cases/self_qualified_types.rs:6:9
+ --> tests/fail/self_qualified_types.rs:6:9
   |
 6 |     f: <i32 as Not>::Output,
   |         ^^^

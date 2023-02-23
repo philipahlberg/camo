@@ -1,7 +1,5 @@
 use std::{convert::TryFrom, fmt};
 
-use camo::RenameRule;
-
 /// A top-level type definition.
 #[derive(Debug, PartialEq)]
 pub enum Definition {
@@ -88,6 +86,7 @@ impl From<camo::Container> for Definition {
         match container.item {
             camo::Item::Struct(s) => match s.content {
                 camo::StructVariant::NamedFields(fields) => Definition::Interface(Interface {
+                    export: s.visibility.is_pub(),
                     name: if let Some(rule) = rename_rule {
                         apply_rename_rule_to_type_name(rule, s.name)
                     } else {
@@ -108,6 +107,7 @@ impl From<camo::Container> for Definition {
                 }),
                 camo::StructVariant::UnnamedField(field) => {
                     Definition::Type(TypeDefinition::Alias(AliasType {
+                        export: s.visibility.is_pub(),
                         name: if let Some(rule) = rename_rule {
                             apply_rename_rule_to_type_name(rule, s.name)
                         } else {
@@ -145,6 +145,8 @@ impl fmt::Display for Definition {
 /// Represents a TypeScript `interface` declaration.
 #[derive(Debug, PartialEq)]
 pub struct Interface {
+    // Whether the interface is marked with `export`.
+    pub export: bool,
     /// The name of the interface.
     pub name: String,
     /// The generic parameters of the interface.
@@ -155,6 +157,9 @@ pub struct Interface {
 
 impl fmt::Display for Interface {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.export {
+            write!(f, "export ")?;
+        }
         write!(f, "interface {}", self.name)?;
         if !self.parameters.is_empty() {
             write!(f, "<")?;
@@ -219,6 +224,7 @@ impl fmt::Display for TypeDefinition {
 
 #[derive(Debug, PartialEq)]
 pub struct AliasType {
+    pub export: bool,
     pub name: String,
     pub parameters: Vec<&'static str>,
     pub ty: Type,
@@ -226,6 +232,9 @@ pub struct AliasType {
 
 impl fmt::Display for AliasType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.export {
+            write!(f, "export ")?;
+        }
         write!(f, "type {}", self.name)?;
         if !self.parameters.is_empty() {
             write!(f, "<")?;
@@ -241,6 +250,8 @@ impl fmt::Display for AliasType {
 /// A type with multiple cases.
 #[derive(Debug, PartialEq)]
 pub struct UnionType {
+    /// Whether the type is marked with `export`.
+    pub export: bool,
     /// The name of the union type.
     pub name: String,
     /// The generic parameters of the union type.
@@ -251,11 +262,12 @@ pub struct UnionType {
 
 impl UnionType {
     fn externally_tagged(
-        rename: Option<RenameRule>,
-        rename_all: Option<RenameRule>,
+        rename: Option<camo::RenameRule>,
+        rename_all: Option<camo::RenameRule>,
         ty: camo::Enum,
     ) -> Self {
         Self {
+            export: ty.visibility.is_pub(),
             name: if let Some(rule) = rename {
                 apply_rename_rule_to_type_name(rule, ty.name)
             } else {
@@ -271,13 +283,14 @@ impl UnionType {
     }
 
     fn adjacently_tagged(
-        rename: Option<RenameRule>,
-        rename_all: Option<RenameRule>,
+        rename: Option<camo::RenameRule>,
+        rename_all: Option<camo::RenameRule>,
         tag: &'static str,
         content: &'static str,
         ty: camo::Enum,
     ) -> Self {
         Self {
+            export: ty.visibility.is_pub(),
             name: if let Some(rule) = rename {
                 apply_rename_rule_to_type_name(rule, ty.name)
             } else {
@@ -293,12 +306,13 @@ impl UnionType {
     }
 
     fn internally_tagged(
-        rename: Option<RenameRule>,
-        rename_all: Option<RenameRule>,
+        rename: Option<camo::RenameRule>,
+        rename_all: Option<camo::RenameRule>,
         tag: &'static str,
         ty: camo::Enum,
     ) -> Self {
         Self {
+            export: ty.visibility.is_pub(),
             name: if let Some(rule) = rename {
                 apply_rename_rule_to_type_name(rule, ty.name)
             } else {
@@ -316,6 +330,9 @@ impl UnionType {
 
 impl fmt::Display for UnionType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.export {
+            write!(f, "export ")?;
+        }
         write!(f, "type {}", self.name)?;
         if !self.parameters.is_empty() {
             write!(f, "<")?;
@@ -336,7 +353,7 @@ impl fmt::Display for UnionType {
 pub struct Variant(pub Type);
 
 impl Variant {
-    fn externally_tagged(rename_all: Option<RenameRule>, variant: camo::Variant) -> Self {
+    fn externally_tagged(rename_all: Option<camo::RenameRule>, variant: camo::Variant) -> Self {
         match variant.content {
             camo::VariantContent::Unit => Self(Type::Literal(LiteralType::String(
                 if let Some(rule) = rename_all {
@@ -381,7 +398,7 @@ impl Variant {
     }
 
     fn adjacently_tagged(
-        rename_all: Option<RenameRule>,
+        rename_all: Option<camo::RenameRule>,
         tag_name: &'static str,
         content_name: &'static str,
         variant: camo::Variant,
@@ -445,7 +462,7 @@ impl Variant {
     }
 
     fn internally_tagged(
-        rename_all: Option<RenameRule>,
+        rename_all: Option<camo::RenameRule>,
         tag: &'static str,
         variant: camo::Variant,
     ) -> Self {
@@ -689,11 +706,11 @@ pub struct ObjectType {
 
 impl fmt::Display for ObjectType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "{{")?;
+        write!(f, "{{")?;
         for field in &self.fields {
             write!(f, " {}", field)?;
         }
-        writeln!(f, " }}")
+        write!(f, " }}")
     }
 }
 

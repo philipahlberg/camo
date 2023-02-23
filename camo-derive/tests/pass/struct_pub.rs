@@ -1,8 +1,8 @@
-use camo::{Camo as _, Container, Attributes, Item, Struct, StructVariant, NamedField, Type, PathSegment, TypePath};
+use camo::{Camo as _, Container, Attributes, Item, Struct, Visibility, StructVariant, NamedField, Type, PathSegment, TypePath};
 use camo_derive::Camo;
 
 #[derive(Camo)]
-struct Foo {
+pub struct Foo {
     foo: u32,
     bar: bool,
     baz: char,
@@ -16,6 +16,7 @@ fn main() {
         Container {
             attributes: Attributes::default(),
             item: Item::Struct(Struct {
+                visibility: Visibility::Pub,
                 name: "Foo",
                 arguments: Vec::new(),
                 content: StructVariant::NamedFields(

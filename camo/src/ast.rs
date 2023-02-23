@@ -35,9 +35,27 @@ pub enum Item {
     Enum(Enum),
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum Visibility {
+    None,
+    Pub,
+}
+
+impl Visibility {
+    pub fn is_none(&self) -> bool {
+        matches!(self, Self::None)
+    }
+
+    pub fn is_pub(&self) -> bool {
+        matches!(self, Self::Pub)
+    }
+}
+
 /// Represents a `struct` definition.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Struct {
+    /// The visibility level of the struct.
+    pub visibility: Visibility,
     /// The name of the struct.
     pub name: &'static str,
     /// The generic arguments of the struct.
@@ -73,6 +91,8 @@ pub struct UnnamedField {
 /// Represents an `enum` definition.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Enum {
+    /// The visibility level of the enum.
+    pub visibility: Visibility,
     /// The name of the enum.
     pub name: &'static str,
     /// The generic arguments of the enum.

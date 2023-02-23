@@ -1,4 +1,4 @@
-use camo::{Camo as _, Container, Attributes, Item, Enum, Variant, VariantContent, Type, PathSegment, TypePath};
+use camo::{Camo as _, Container, Attributes, Item, Enum, Visibility, Variant, VariantContent, Type, PathSegment, TypePath};
 use camo_derive::Camo;
 
 struct Bar {
@@ -19,6 +19,7 @@ fn main() {
         Container {
             attributes: Attributes::default(),
             item: Item::Enum(Enum {
+                visibility: Visibility::None,
                 name: "Foo",
                 arguments: Vec::new(),
                 variants: Vec::from([

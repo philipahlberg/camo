@@ -11,32 +11,10 @@ impl Container {
     pub fn into_token_stream(self) -> TokenStream {
         let attributes = match self.serde {
             Some(serde) => {
-                let rename = match serde.rename {
-                    Some(attr) => {
-                        let tokens = attr.into_token_stream();
-                        quote!(::core::option::Option::Some(#tokens))
-                    }
-                    None => quote!(::core::option::Option::None),
-                };
-                let rename_all = match serde.rename_all {
-                    Some(attr) => {
-                        let tokens = attr.into_token_stream();
-                        quote!(::core::option::Option::Some(#tokens))
-                    }
-                    None => quote!(::core::option::Option::None),
-                };
-                let tag = match serde.tag {
-                    Some(attr) => {
-                        quote!(::core::option::Option::Some(#attr))
-                    }
-                    None => quote!(::core::option::Option::None),
-                };
-                let content = match serde.content {
-                    Some(attr) => {
-                        quote!(::core::option::Option::Some(#attr))
-                    }
-                    None => quote!(::core::option::Option::None),
-                };
+                let rename = rename_rule_opt_to_token_stream(serde.rename);
+                let rename_all = rename_rule_opt_to_token_stream(serde.rename_all);
+                let tag = literal_attr_opt_to_token_stream(serde.tag);
+                let content = literal_attr_opt_to_token_stream(serde.content);
                 quote! {
                     ::camo::Attributes {
                         rename: #rename,
@@ -63,6 +41,23 @@ impl Container {
                 item: #item,
             }
         }
+    }
+}
+
+fn rename_rule_opt_to_token_stream(opt: Option<RenameRule>) -> TokenStream {
+    if let Some(rule) = opt {
+        let tokens = rule.into_token_stream();
+        quote!(::core::option::Option::Some(#tokens))
+    } else {
+        quote!(::core::option::Option::None)
+    }
+}
+
+fn literal_attr_opt_to_token_stream(opt: Option<String>) -> TokenStream {
+    if let Some(attr) = opt {
+        quote!(::core::option::Option::Some(#attr))
+    } else {
+        quote!(::core::option::Option::None)
     }
 }
 
@@ -127,7 +122,23 @@ impl Item {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum Visibility {
+    None,
+    Pub,
+}
+
+impl Visibility {
+    pub fn into_token_stream(self) -> TokenStream {
+        match self {
+            Visibility::None => quote!(::camo::Visibility::None),
+            Visibility::Pub => quote!(::camo::Visibility::Pub),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Struct {
+    pub visibility: Visibility,
     pub name: String,
     pub arguments: Vec<String>,
     pub content: StructVariant,
@@ -135,12 +146,14 @@ pub struct Struct {
 
 impl Struct {
     pub fn into_token_stream(self) -> TokenStream {
+        let visibility = self.visibility.into_token_stream();
         let name = self.name;
         let arguments = self.arguments;
         let content = self.content.into_token_stream();
 
         quote! {
             ::camo::Struct {
+                visibility: #visibility,
                 name: #name,
                 arguments: Vec::from([
                     #(#arguments),*
@@ -220,6 +233,7 @@ impl UnnamedField {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Enum {
+    pub visibility: Visibility,
     pub name: String,
     pub arguments: Vec<String>,
     pub variants: Vec<Variant>,
@@ -227,6 +241,7 @@ pub struct Enum {
 
 impl Enum {
     fn into_token_stream(self) -> TokenStream {
+        let visibility = self.visibility.into_token_stream();
         let name = self.name;
         let arguments: Vec<_> = self.arguments;
         let variants: Vec<_> = self
@@ -237,6 +252,7 @@ impl Enum {
 
         quote! {
             ::camo::Enum {
+                visibility: #visibility,
                 name: #name,
                 arguments: Vec::from([
                     #(#arguments),*

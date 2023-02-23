@@ -1,5 +1,5 @@
 use camo_derive::Camo;
-use camo::{Camo as _, Container, Attributes, Item, Struct, StructVariant, NamedField, Type, TypePath, PathSegment};
+use camo::{Camo as _, Container, Attributes, Item, Struct, Visibility, StructVariant, NamedField, Type, TypePath, PathSegment};
 
 #[derive(Camo)]
 struct Foo<T> {
@@ -15,6 +15,7 @@ fn main() {
         Container {
             attributes: Attributes::default(),
             item: Item::Struct(Struct {
+                visibility: Visibility::None,
                 name: "Foo",
                 arguments: Vec::from(["T"]),
                 content: StructVariant::NamedFields(
