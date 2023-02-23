@@ -16,11 +16,11 @@ proc-macro = true
 doctest = false
 
 [dependencies]
-proc-macro2 = "1.0"
-quote = "1.0"
-syn = "1.0"
+proc-macro2 = "1.0.51"
+quote = "1.0.23"
+syn = "1.0.108"
 
 [dev-dependencies]
 camo = { path = "../camo" }
-trybuild = "1.0"
+trybuild = "1.0.77"
 serde = { version = "1.0.152", features = ["derive"] }
