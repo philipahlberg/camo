@@ -2,7 +2,7 @@ use camo_core as camo;
 use std::{convert::TryFrom, fmt};
 
 /// A top-level type definition.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Definition {
     /// An interface definition.
     ///
@@ -22,6 +22,30 @@ pub enum Definition {
     /// type Foo = { value: number };
     /// ```
     Type(TypeDefinition),
+}
+
+impl From<Interface> for Definition {
+    fn from(value: Interface) -> Self {
+        Definition::Interface(value)
+    }
+}
+
+impl From<TypeDefinition> for Definition {
+    fn from(value: TypeDefinition) -> Self {
+        Definition::Type(value)
+    }
+}
+
+impl From<AliasType> for Definition {
+    fn from(value: AliasType) -> Self {
+        Definition::Type(TypeDefinition::Alias(value))
+    }
+}
+
+impl From<UnionType> for Definition {
+    fn from(value: UnionType) -> Self {
+        Definition::Type(TypeDefinition::Union(value))
+    }
 }
 
 fn apply_rename_rule_to_field_name(rule: camo::RenameRule, name: &str) -> String {
@@ -144,7 +168,7 @@ impl fmt::Display for Definition {
 }
 
 /// Represents a TypeScript `interface` declaration.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Interface {
     // Whether the interface is marked with `export`.
     pub export: bool,
@@ -178,7 +202,7 @@ impl fmt::Display for Interface {
 }
 
 /// A field in e.g. an `interface` or a record literal type.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Field {
     /// The name of the field.
     pub name: String,
@@ -192,7 +216,7 @@ impl fmt::Display for Field {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum TypeDefinition {
     /// A type definition that aliases some type.
     ///
@@ -223,12 +247,30 @@ impl fmt::Display for TypeDefinition {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AliasType {
     pub export: bool,
     pub name: String,
     pub parameters: Vec<&'static str>,
     pub ty: Type,
+}
+
+impl AliasType {
+    pub fn new<T: Into<Type>>(name: &str, ty: T) -> Self {
+        Self {
+            export: false,
+            name: String::from(name),
+            parameters: Vec::new(),
+            ty: ty.into(),
+        }
+    }
+
+    pub fn exported(self) -> Self {
+        Self {
+            export: true,
+            ..self
+        }
+    }
 }
 
 impl fmt::Display for AliasType {
@@ -249,7 +291,7 @@ impl fmt::Display for AliasType {
 }
 
 /// A type with multiple cases.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct UnionType {
     /// Whether the type is marked with `export`.
     pub export: bool,
@@ -350,7 +392,7 @@ impl fmt::Display for UnionType {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Variant(pub Type);
 
 impl Variant {
@@ -528,7 +570,7 @@ impl fmt::Display for Variant {
 
 /// Represents a type use, e. g. in an interface definition,
 /// function type definition, or type alias.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Type {
     Builtin(BuiltinType),
     Path(TypePath),
@@ -536,6 +578,36 @@ pub enum Type {
     Literal(LiteralType),
     Array(Box<Type>),
     Intersection(IntersectionType),
+}
+
+impl From<BuiltinType> for Type {
+    fn from(value: BuiltinType) -> Self {
+        Self::Builtin(value)
+    }
+}
+
+impl From<TypePath> for Type {
+    fn from(value: TypePath) -> Self {
+        Self::Path(value)
+    }
+}
+
+impl From<ObjectType> for Type {
+    fn from(value: ObjectType) -> Self {
+        Self::Object(value)
+    }
+}
+
+impl From<LiteralType> for Type {
+    fn from(value: LiteralType) -> Self {
+        Self::Literal(value)
+    }
+}
+
+impl From<IntersectionType> for Type {
+    fn from(value: IntersectionType) -> Self {
+        Self::Intersection(value)
+    }
 }
 
 impl From<camo::Type> for Type {
@@ -580,7 +652,7 @@ impl fmt::Display for Type {
 }
 
 /// The built-in types.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum BuiltinType {
     /// The `number` type.
     Number,
@@ -631,7 +703,7 @@ impl fmt::Display for BuiltinType {
 /// const x: types.X = { /* ... */}
 /// //       ^^^^^^^
 /// ```
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TypePath {
     /// The segments of the type name.
     pub segments: Vec<PathSegment>,
@@ -641,6 +713,30 @@ impl From<camo::TypePath> for TypePath {
     fn from(value: camo::TypePath) -> Self {
         Self {
             segments: value.segments.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl<const N: usize> From<[&'static str; N]> for TypePath {
+    fn from(value: [&'static str; N]) -> Self {
+        Self {
+            segments: value
+                .map(|name| PathSegment {
+                    name,
+                    arguments: Vec::new(),
+                })
+                .to_vec(),
+        }
+    }
+}
+
+impl From<&'static str> for TypePath {
+    fn from(value: &'static str) -> Self {
+        Self {
+            segments: Vec::from([PathSegment {
+                name: value,
+                arguments: Vec::new(),
+            }]),
         }
     }
 }
@@ -659,7 +755,7 @@ impl fmt::Display for TypePath {
 }
 
 /// A segment of a type path.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PathSegment {
     /// The name of the segment.
     pub name: &'static str,
@@ -699,7 +795,7 @@ impl fmt::Display for PathSegment {
 }
 
 /// An object type.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ObjectType {
     /// The fields of the object type.
     pub fields: Vec<Field>,
@@ -716,7 +812,7 @@ impl fmt::Display for ObjectType {
 }
 
 /// A literal type.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum LiteralType {
     /// A string literal type.
     String(String),
@@ -730,7 +826,7 @@ impl fmt::Display for LiteralType {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct IntersectionType {
     pub left: Box<Type>,
     pub right: Box<Type>,
