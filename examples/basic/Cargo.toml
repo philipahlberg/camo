@@ -7,4 +7,3 @@ publish = false
 
 [dependencies]
 camo = { path = "../../camo", features = ["derive"] }
-serde = { version = "1.0.152", features = ["derive"] }
