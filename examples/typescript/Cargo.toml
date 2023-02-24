@@ -2,7 +2,7 @@
 name = "example-typescript"
 version = "0.0.0"
 authors = ["philipahlberg <philipahlberg@gmail.com>"]
-edition = "2018"
+edition = "2021"
 publish = false
 
 [dependencies]
