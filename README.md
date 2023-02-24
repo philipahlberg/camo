@@ -6,7 +6,7 @@
 
 [Documentation][docsrs-link-camo] | [Repository][github-link] | [Releases][github-link-releases]
 
-Camo is a library for converting Rust type definitions into other languages. 
+Camo is a library for converting Rust type definitions into corresponding definitions in other languages.
 
 - **Abstract syntax tree** - Camo provides a collection of data structures that describe a subset of the Rust syntax. The syntax tree is rooted in [`core::Container`], which types provide via the [`core::Camo`] trait.
 
@@ -101,7 +101,7 @@ This project is composed of multiple crates in order to organize features.
 | [`camo`][cratesio-link-camo] | This crate consolidates the subcrates, and is the only crate intended for general use. It exposes `camo-core`, and optionally exposes `camo-derive` and `camo-typescript` via feature switches. |
 | [`camo-core`][cratesio-link-camo-core] | This crate defines the AST at the core of `camo`, and is thus the foundation that the other crates build upon. |
 | [`camo-derive`][cratesio-link-camo-derive] | This crate defines the derive macro `Camo`. |
-| [`camo-typescript`][cratesio-link-camo-typescript] | This crate implements a translation layer from the Camo AST to TypeScript definitions that can be written directly to e.g. a file. |
+| [`camo-typescript`][cratesio-link-camo-typescript] | This crate implements a translation layer from the Camo AST to TypeScript definitions that can be written out directly, e.g. a file. |
 
 ## License
 
