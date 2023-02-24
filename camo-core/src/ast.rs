@@ -58,10 +58,16 @@ pub struct Struct {
     pub visibility: Visibility,
     /// The name of the struct.
     pub name: &'static str,
-    /// The generic arguments of the struct.
-    pub arguments: Vec<&'static str>,
+    /// The generic parameters of the struct.
+    pub parameters: Vec<GenericParameter>,
     /// The content of the struct.
     pub content: StructVariant,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum GenericParameter {
+    Lifetime(&'static str),
+    Type(&'static str),
 }
 
 /// A list of fields.
@@ -95,8 +101,8 @@ pub struct Enum {
     pub visibility: Visibility,
     /// The name of the enum.
     pub name: &'static str,
-    /// The generic arguments of the enum.
-    pub arguments: Vec<&'static str>,
+    /// The generic parameters of the enum.
+    pub parameters: Vec<GenericParameter>,
     /// The variants of the enum.
     pub variants: Vec<Variant>,
 }
@@ -124,11 +130,24 @@ pub enum Type {
     /// A path representing some type (e.g. `Foo` or `std::collections::HashMap`).
     Path(TypePath),
     /// A type reference (e.g. `&'a str`).
-    Reference(Box<Type>),
+    Reference(TypeReference),
     /// A dynamically-sized array.
     Slice(Box<Type>),
     /// A fixed-size array.
     Array(Box<Type>),
+}
+
+/// The name of a type (struct or enum) declared elsewhere.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypeReference {
+    pub lifetime: Lifetime,
+    /// The name of the type.
+    pub ty: Box<Type>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Lifetime {
+    pub name: String,
 }
 
 /// The name of a type (struct or enum) declared elsewhere.
@@ -150,7 +169,13 @@ impl<const N: usize> From<[PathSegment; N]> for TypePath {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PathSegment {
     pub name: &'static str,
-    pub arguments: Vec<Type>,
+    pub arguments: Vec<GenericArgument>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum GenericArgument {
+    Type(Type),
+    Lifetime(String),
 }
 
 /// The built-in types.

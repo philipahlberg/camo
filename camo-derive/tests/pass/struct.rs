@@ -18,7 +18,7 @@ fn main() {
             item: Item::Struct(Struct {
                 visibility: Visibility::None,
                 name: "Foo",
-                arguments: Vec::new(),
+                parameters: Vec::new(),
                 content: StructVariant::NamedFields(
                     Vec::from([
                         NamedField {

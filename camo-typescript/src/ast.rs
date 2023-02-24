@@ -126,7 +126,15 @@ impl From<camo::Container> for Definition {
                 camo::StructVariant::NamedFields(fields) => Definition::Interface(Interface {
                     export: s.visibility.is_pub(),
                     name: rename.rename_type(s.name),
-                    parameters: s.arguments,
+                    parameters: s
+                        .parameters
+                        .into_iter()
+                        .filter_map(|parameter| match parameter {
+                            // Lifetimes are ignored
+                            camo::GenericParameter::Lifetime(_) => None,
+                            camo::GenericParameter::Type(ty) => Some(ty),
+                        })
+                        .collect(),
                     fields: fields
                         .into_iter()
                         .map(|field| Field {
@@ -139,7 +147,15 @@ impl From<camo::Container> for Definition {
                     Definition::Type(TypeDefinition::Alias(AliasType {
                         export: s.visibility.is_pub(),
                         name: rename.rename_type(s.name),
-                        parameters: s.arguments,
+                        parameters: s
+                            .parameters
+                            .into_iter()
+                            .filter_map(|parameter| match parameter {
+                                // Lifetimes are ignored
+                                camo::GenericParameter::Lifetime(_) => None,
+                                camo::GenericParameter::Type(ty) => Some(ty),
+                            })
+                            .collect(),
                         ty: Type::from(field.ty),
                     }))
                 }
@@ -309,7 +325,15 @@ impl UnionType {
         Self {
             export: ty.visibility.is_pub(),
             name: rename.rename_type(ty.name),
-            parameters: ty.arguments,
+            parameters: ty
+                .parameters
+                .into_iter()
+                .filter_map(|parameter| match parameter {
+                    // Lifetimes are ignored
+                    camo::GenericParameter::Lifetime(_) => None,
+                    camo::GenericParameter::Type(ty) => Some(ty),
+                })
+                .collect(),
             variants: ty
                 .variants
                 .into_iter()
@@ -328,7 +352,15 @@ impl UnionType {
         Self {
             export: ty.visibility.is_pub(),
             name: rename.rename_type(ty.name),
-            parameters: ty.arguments,
+            parameters: ty
+                .parameters
+                .into_iter()
+                .filter_map(|parameter| match parameter {
+                    // Lifetimes are ignored
+                    camo::GenericParameter::Lifetime(_) => None,
+                    camo::GenericParameter::Type(ty) => Some(ty),
+                })
+                .collect(),
             variants: ty
                 .variants
                 .into_iter()
@@ -346,7 +378,15 @@ impl UnionType {
         Self {
             export: ty.visibility.is_pub(),
             name: rename.rename_field(ty.name),
-            parameters: ty.arguments,
+            parameters: ty
+                .parameters
+                .into_iter()
+                .filter_map(|parameter| match parameter {
+                    // Lifetimes are ignored
+                    camo::GenericParameter::Lifetime(_) => None,
+                    camo::GenericParameter::Type(ty) => Some(ty),
+                })
+                .collect(),
             variants: ty
                 .variants
                 .into_iter()
@@ -557,13 +597,19 @@ impl From<camo::Type> for Type {
             camo::Type::Path(ty) => match camo::BuiltinType::try_from(ty) {
                 Ok(ty) => Type::Builtin(BuiltinType::from(ty)),
                 Err(ty) => {
-                    if let Some(s) = ty.segments.first() {
-                        match s.name {
+                    if let Some(segment) = ty.segments.first() {
+                        match segment.name {
                             "String" => {
                                 return Type::Builtin(BuiltinType::String);
                             }
                             "Vec" => {
-                                let component_ty = s.arguments.first().unwrap().clone();
+                                let component_ty = match segment.arguments.first().unwrap().clone()
+                                {
+                                    camo::GenericArgument::Type(ty) => ty,
+                                    camo::GenericArgument::Lifetime(_) => {
+                                        panic!("unexpected lifetime argument provided to Vec")
+                                    }
+                                };
                                 return Type::Array(Box::new(Type::from(component_ty)));
                             }
                             _ => return Type::Path(TypePath::from(ty)),
@@ -572,7 +618,16 @@ impl From<camo::Type> for Type {
                     Type::Path(TypePath::from(ty))
                 }
             },
-            camo::Type::Reference(ty) => Type::from(*ty),
+            camo::Type::Reference(ty) => {
+                if let camo::Type::Path(path) = &*ty.ty {
+                    if let Some(segment) = path.segments.first() {
+                        if segment.name == "str" {
+                            return Type::Builtin(BuiltinType::String);
+                        }
+                    }
+                }
+                Type::from(*ty.ty)
+            }
             camo::Type::Slice(ty) => Type::Array(Box::new(Type::from(*ty))),
             camo::Type::Array(ty) => Type::Array(Box::new(Type::from(*ty))),
         }
@@ -711,7 +766,10 @@ impl From<camo::PathSegment> for PathSegment {
             arguments: value
                 .arguments
                 .into_iter()
-                .map(|argument| argument.into())
+                .filter_map(|argument| match argument {
+                    camo::GenericArgument::Type(ty) => Some(Type::from(ty)),
+                    camo::GenericArgument::Lifetime(_) => None,
+                })
                 .collect(),
         }
     }

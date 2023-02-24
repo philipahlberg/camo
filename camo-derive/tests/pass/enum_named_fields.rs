@@ -16,7 +16,7 @@ fn main() {
             item: Item::Enum(Enum {
                 visibility: Visibility::None,
                 name: "Foo",
-                arguments: Vec::new(),
+                parameters: Vec::new(),
                 variants: Vec::from([
                     Variant {
                         name: "One",

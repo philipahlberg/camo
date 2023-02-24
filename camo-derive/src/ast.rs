@@ -140,7 +140,7 @@ impl Visibility {
 pub struct Struct {
     pub visibility: Visibility,
     pub name: String,
-    pub arguments: Vec<String>,
+    pub parameters: Vec<GenericParameter>,
     pub content: StructVariant,
 }
 
@@ -148,17 +148,40 @@ impl Struct {
     pub fn into_token_stream(self) -> TokenStream {
         let visibility = self.visibility.into_token_stream();
         let name = self.name;
-        let arguments = self.arguments;
+        let parameters: Vec<_> = self
+            .parameters
+            .into_iter()
+            .map(GenericParameter::into_token_stream)
+            .collect();
         let content = self.content.into_token_stream();
 
         quote! {
             ::camo::core::Struct {
                 visibility: #visibility,
                 name: #name,
-                arguments: Vec::from([
-                    #(#arguments),*
+                parameters: Vec::from([
+                    #(#parameters),*
                 ]),
                 content: #content,
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum GenericParameter {
+    Lifetime(String),
+    Type(String),
+}
+
+impl GenericParameter {
+    fn into_token_stream(self) -> TokenStream {
+        match self {
+            Self::Lifetime(name) => {
+                quote!(::camo::core::GenericParameter::Lifetime(#name))
+            }
+            Self::Type(name) => {
+                quote!(::camo::core::GenericParameter::Type(#name))
             }
         }
     }
@@ -235,7 +258,7 @@ impl UnnamedField {
 pub struct Enum {
     pub visibility: Visibility,
     pub name: String,
-    pub arguments: Vec<String>,
+    pub parameters: Vec<GenericParameter>,
     pub variants: Vec<Variant>,
 }
 
@@ -243,7 +266,11 @@ impl Enum {
     fn into_token_stream(self) -> TokenStream {
         let visibility = self.visibility.into_token_stream();
         let name = self.name;
-        let arguments: Vec<_> = self.arguments;
+        let parameters: Vec<_> = self
+            .parameters
+            .into_iter()
+            .map(GenericParameter::into_token_stream)
+            .collect();
         let variants: Vec<_> = self
             .variants
             .into_iter()
@@ -254,8 +281,8 @@ impl Enum {
             ::camo::core::Enum {
                 visibility: #visibility,
                 name: #name,
-                arguments: Vec::from([
-                    #(#arguments),*
+                parameters: Vec::from([
+                    #(#parameters),*
                 ]),
                 variants: Vec::from([
                     #(#variants),*
@@ -318,7 +345,7 @@ impl VariantContent {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Path(TypePath),
-    Reference(Box<Type>),
+    Reference(TypeReference),
     Slice(Box<Type>),
     Array(Box<Type>),
 }
@@ -335,7 +362,7 @@ impl Type {
             Type::Reference(ty) => {
                 let content = ty.into_token_stream();
                 quote! {
-                    ::camo::core::Type::Reference(Box::new(#content))
+                    ::camo::core::Type::Reference(#content)
                 }
             }
             Type::Slice(ty) => {
@@ -349,6 +376,41 @@ impl Type {
                 quote! {
                     ::camo::core::Type::Array(Box::new(#content))
                 }
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypeReference {
+    pub lifetime: Lifetime,
+    pub ty: Box<Type>,
+}
+
+impl TypeReference {
+    fn into_token_stream(self) -> TokenStream {
+        let lifetime = self.lifetime.into_token_stream();
+        let ty = (*self.ty).into_token_stream();
+        quote! {
+            ::camo::core::TypeReference {
+                lifetime: #lifetime,
+                ty: Box::new(#ty),
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Lifetime {
+    pub name: String,
+}
+
+impl Lifetime {
+    fn into_token_stream(self) -> TokenStream {
+        let name = self.name;
+        quote! {
+            ::camo::core::Lifetime {
+                name: String::from(#name),
             }
         }
     }
@@ -380,7 +442,13 @@ impl TypePath {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PathSegment {
     pub name: String,
-    pub arguments: Vec<Type>,
+    pub arguments: Vec<GenericArgument>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum GenericArgument {
+    Type(Type),
+    Lifetime(String),
 }
 
 impl PathSegment {
@@ -398,6 +466,20 @@ impl PathSegment {
                 arguments: Vec::from([
                     #(#arguments),*
                 ]),
+            }
+        }
+    }
+}
+
+impl GenericArgument {
+    fn into_token_stream(self) -> TokenStream {
+        match self {
+            Self::Type(ty) => {
+                let ty = ty.into_token_stream();
+                quote!(::camo::core::GenericArgument::Type(#ty))
+            }
+            Self::Lifetime(lt) => {
+                quote!(::camo::core::GenericArgument::Lifetime(String::from(#lt)))
             }
         }
     }

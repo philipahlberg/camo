@@ -14,13 +14,13 @@
 mod ast;
 mod derive_camo;
 
-use derive_camo::derive_camo;
+use derive_camo::derive;
 use proc_macro::TokenStream;
 use syn::{parse_macro_input, DeriveInput};
 
 #[proc_macro_derive(Camo, attributes(serde))]
 pub fn derive_macro_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    let output = derive_camo(input);
+    let output = derive(input);
     TokenStream::from(output)
 }

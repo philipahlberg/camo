@@ -133,6 +133,29 @@ fn supports_string() {
 }
 
 #[test]
+fn supports_str() {
+    #[derive(Camo)]
+    struct Foo<'a> {
+        foo: &'a str,
+    }
+
+    let foo: Definition = Foo::camo().into();
+
+    assert_eq!(
+        foo,
+        Definition::Interface(Interface {
+            export: false,
+            name: String::from("Foo"),
+            parameters: Vec::new(),
+            fields: vec![Field {
+                name: String::from("foo"),
+                ty: Type::Builtin(BuiltinType::String),
+            }]
+        })
+    );
+}
+
+#[test]
 fn supports_vec() {
     #[derive(Camo)]
     struct Foo {

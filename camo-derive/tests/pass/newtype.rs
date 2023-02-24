@@ -14,7 +14,7 @@ fn main() {
             item: Item::Struct(Struct {
                 visibility: Visibility::None,
                 name: "Foo",
-                arguments: Vec::new(),
+                parameters: Vec::new(),
                 content: StructVariant::UnnamedField(UnnamedField {
                     ty: Type::Path(TypePath::from([PathSegment {
                         name: "i32",

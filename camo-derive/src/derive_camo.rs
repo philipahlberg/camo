@@ -1,11 +1,9 @@
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
-use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::token::Comma;
 use syn::{
     AttrStyle, Data, DataEnum, DataStruct, DeriveInput, Fields, GenericArgument, GenericParam,
-    Generics, Meta, MetaList, PathArguments, Variant, Visibility,
+    Generics, Meta, MetaList, PathArguments, PathSegment, TypePath, Variant, Visibility,
 };
 
 use crate::ast;
@@ -19,7 +17,6 @@ pub enum ErrorKind {
     Union,
     UnitStruct,
     GenericBounds,
-    Lifetimes,
     ConstGenerics,
     ExplicicitDiscriminant,
     EnumMultipleUnnamedFields,
@@ -40,7 +37,6 @@ impl ErrorKind {
             Self::Union => "`camo` does not support unions",
             Self::UnitStruct => "`camo` does not support unit structs",
             Self::GenericBounds => "`camo` does not support generic bounds",
-            Self::Lifetimes => "`camo` does not support lifetimes",
             Self::ConstGenerics => "`camo` does not support const generics",
             Self::ExplicicitDiscriminant => "`camo` does not support explicit discriminants",
             Self::EnumMultipleUnnamedFields => {
@@ -61,7 +57,7 @@ impl ErrorKind {
     }
 }
 
-pub fn derive_camo(input: DeriveInput) -> TokenStream {
+pub fn derive(input: DeriveInput) -> TokenStream {
     match Impl::from_input(input) {
         Ok(v) => v.into_token_stream(),
         Err(error) => {
@@ -144,7 +140,7 @@ impl ast::Container {
 
         let serde = meta.map(ast::SerdeAttributes::from_meta_list).transpose()?;
 
-        let item = build_item(input)?;
+        let item = ast::Item::from_input(input)?;
 
         Ok(Self { serde, item })
     }
@@ -264,58 +260,66 @@ impl ast::RenameRule {
     }
 }
 
-fn build_item(input: DeriveInput) -> Result<ast::Item, Error> {
-    let name = input.ident;
-    let generics = input.generics;
-    let visibility = input.vis;
-    match input.data {
-        Data::Struct(data) => Ok(ast::Item::Struct(build_struct(
-            visibility, name, generics, data,
-        )?)),
-        Data::Enum(data) => Ok(ast::Item::Enum(build_enum(
-            visibility, name, generics, data,
-        )?)),
-        Data::Union(data) => Err(Error {
-            kind: ErrorKind::Union,
-            span: data.union_token.span(),
-        }),
+impl ast::Item {
+    fn from_input(input: DeriveInput) -> Result<Self, Error> {
+        let name = input.ident;
+        let generics = input.generics;
+        let visibility = input.vis;
+        match input.data {
+            Data::Struct(data) => Ok(ast::Item::Struct(ast::Struct::from_content(
+                visibility, name, generics, data,
+            )?)),
+            Data::Enum(data) => Ok(ast::Item::Enum(ast::Enum::from_content(
+                visibility, name, generics, data,
+            )?)),
+            Data::Union(data) => Err(Error {
+                kind: ErrorKind::Union,
+                span: data.union_token.span(),
+            }),
+        }
     }
 }
 
-fn build_visibility(visibility: Visibility) -> Result<ast::Visibility, Error> {
-    match visibility {
-        Visibility::Public(_) => Ok(ast::Visibility::Pub),
-        Visibility::Crate(_) => Err(Error {
-            kind: ErrorKind::VisibilityCrate,
-            span: visibility.span(),
-        }),
-        Visibility::Restricted(_) => Err(Error {
-            kind: ErrorKind::VisibilityRestricted,
-            span: visibility.span(),
-        }),
-        Visibility::Inherited => Ok(ast::Visibility::None),
+impl ast::Visibility {
+    fn from_visibility(visibility: Visibility) -> Result<Self, Error> {
+        match visibility {
+            Visibility::Public(_) => Ok(ast::Visibility::Pub),
+            Visibility::Crate(_) => Err(Error {
+                kind: ErrorKind::VisibilityCrate,
+                span: visibility.span(),
+            }),
+            Visibility::Restricted(_) => Err(Error {
+                kind: ErrorKind::VisibilityRestricted,
+                span: visibility.span(),
+            }),
+            Visibility::Inherited => Ok(ast::Visibility::None),
+        }
     }
 }
 
-fn build_struct(
-    visibility: Visibility,
-    name: Ident,
-    generics: Generics,
-    data: DataStruct,
-) -> Result<ast::Struct, Error> {
-    Ok(ast::Struct {
-        visibility: build_visibility(visibility)?,
-        name: name.to_string(),
-        arguments: build_parameters(generics)?,
-        content: build_fields(data.fields)?,
-    })
+impl ast::Struct {
+    fn from_content(
+        visibility: Visibility,
+        name: Ident,
+        generics: Generics,
+        data: DataStruct,
+    ) -> Result<Self, Error> {
+        Ok(ast::Struct {
+            visibility: ast::Visibility::from_visibility(visibility)?,
+            name: name.to_string(),
+            parameters: generics
+                .params
+                .into_iter()
+                .map(ast::GenericParameter::from_param)
+                .collect::<Result<_, _>>()?,
+            content: ast::StructVariant::from_fields(data.fields)?,
+        })
+    }
 }
 
-fn build_parameters(generics: Generics) -> Result<Vec<String>, Error> {
-    generics
-        .params
-        .iter()
-        .map(|parameter| match parameter {
+impl ast::GenericParameter {
+    fn from_param(parameter: GenericParam) -> Result<Self, Error> {
+        match parameter {
             GenericParam::Type(ty) => {
                 if !ty.bounds.is_empty() {
                     return Err(Error {
@@ -323,202 +327,233 @@ fn build_parameters(generics: Generics) -> Result<Vec<String>, Error> {
                         span: ty.bounds.span(),
                     });
                 }
-                Ok(ty.ident.to_string())
+                Ok(Self::Type(ty.ident.to_string()))
             }
-            GenericParam::Lifetime(lt) => Err(Error {
-                kind: ErrorKind::Lifetimes,
-                span: lt.span(),
-            }),
+            GenericParam::Lifetime(lt) => Ok(Self::Lifetime(lt.lifetime.ident.to_string())),
             GenericParam::Const(c) => Err(Error {
                 kind: ErrorKind::ConstGenerics,
                 span: c.span(),
             }),
-        })
-        .collect()
-}
-
-fn build_fields(fields: Fields) -> Result<ast::StructVariant, Error> {
-    match fields {
-        Fields::Named(fields) => {
-            let fields: Result<_, _> = fields
-                .named
-                .into_iter()
-                .map(|field| {
-                    Ok(ast::NamedField {
-                        name: field.ident.as_ref().expect("named field").to_string(),
-                        ty: build_type(field.ty)?,
-                    })
-                })
-                .collect();
-            Ok(ast::StructVariant::NamedFields(fields?))
         }
-        Fields::Unnamed(fields) => {
-            if fields.unnamed.len() > 1 {
-                return Err(Error {
-                    kind: ErrorKind::StructMultipleUnnamedFields,
-                    span: fields.span(),
-                });
-            }
-            let span = fields.span();
-            if let Some(field) = fields.unnamed.into_iter().next() {
-                Ok(ast::StructVariant::UnnamedField(ast::UnnamedField {
-                    ty: build_type(field.ty)?,
-                }))
-            } else {
-                Err(Error {
-                    kind: ErrorKind::UnitStruct,
-                    span,
-                })
-            }
-        }
-        Fields::Unit => Err(Error {
-            kind: ErrorKind::UnitStruct,
-            span: fields.span(),
-        }),
     }
 }
 
-fn build_enum(
-    visibility: Visibility,
-    name: Ident,
-    generics: Generics,
-    data: DataEnum,
-) -> Result<ast::Enum, Error> {
-    Ok(ast::Enum {
-        visibility: build_visibility(visibility)?,
-        name: name.to_string(),
-        arguments: build_parameters(generics)?,
-        variants: build_variants(data.variants)?,
-    })
-}
-
-fn build_variants(variants: Punctuated<Variant, Comma>) -> Result<Vec<ast::Variant>, Error> {
-    variants
-        .into_iter()
-        .map(|variant| {
-            if let Some((_, expr)) = variant.discriminant {
-                return Err(Error {
-                    kind: ErrorKind::ExplicicitDiscriminant,
-                    span: expr.span(),
-                });
-            }
-
-            let content = match variant.fields {
-                Fields::Named(fields) => Ok(ast::VariantContent::Named(
-                    fields
-                        .named
-                        .into_iter()
-                        .map(|field| {
-                            Ok(ast::NamedField {
-                                name: field.ident.as_ref().unwrap().to_string(),
-                                ty: build_type(field.ty)?,
-                            })
+impl ast::StructVariant {
+    fn from_fields(fields: Fields) -> Result<Self, Error> {
+        match fields {
+            Fields::Named(fields) => {
+                let fields: Result<_, _> = fields
+                    .named
+                    .into_iter()
+                    .map(|field| {
+                        Ok(ast::NamedField {
+                            name: field.ident.as_ref().expect("named field").to_string(),
+                            ty: ast::Type::from_ty(field.ty)?,
                         })
-                        .collect::<Result<_, _>>()?,
-                )),
-                Fields::Unnamed(fields) => {
-                    if fields.unnamed.len() > 1 {
-                        return Err(Error {
-                            kind: ErrorKind::EnumMultipleUnnamedFields,
-                            span: fields.span(),
-                        });
-                    }
-                    let field = fields.unnamed.into_iter().next().unwrap();
-                    Ok(ast::VariantContent::Unnamed(build_type(field.ty)?))
-                }
-                Fields::Unit => Ok(ast::VariantContent::Unit),
-            }?;
-
-            Ok(ast::Variant {
-                name: variant.ident.to_string(),
-                content,
-            })
-        })
-        .collect()
-}
-
-fn build_type(ty: syn::Type) -> Result<ast::Type, Error> {
-    match ty {
-        syn::Type::Slice(ty) => Ok(ast::Type::Slice(Box::new(build_type(*ty.elem)?))),
-        syn::Type::Array(ty) => Ok(ast::Type::Array(Box::new(build_type(*ty.elem)?))),
-        syn::Type::BareFn(ty) => Err(Error {
-            kind: ErrorKind::FunctionTypes,
-            span: ty.span(),
-        }),
-        syn::Type::Group(ty) => build_type(*ty.elem),
-        syn::Type::Macro(_) => Err(Error {
-            kind: ErrorKind::Macros,
-            span: ty.span(),
-        }),
-        syn::Type::Paren(ty) => build_type(*ty.elem),
-        syn::Type::Path(ty) => {
-            if let Some(q) = &ty.qself {
-                return Err(Error {
-                    kind: ErrorKind::SelfQualifiedTypes,
-                    span: q.ty.span(),
-                });
-            }
-
-            let segments: Vec<_> = ty
-                .path
-                .segments
-                .into_iter()
-                .map(|segment| {
-                    Ok(ast::PathSegment {
-                        name: segment.ident.to_string(),
-                        arguments: build_type_arguments(segment.arguments)?,
                     })
-                })
-                .collect::<Result<_, _>>()?;
-
-            let path = ast::TypePath { segments };
-
-            Ok(ast::Type::Path(path))
+                    .collect();
+                Ok(ast::StructVariant::NamedFields(fields?))
+            }
+            Fields::Unnamed(fields) => {
+                if fields.unnamed.len() > 1 {
+                    return Err(Error {
+                        kind: ErrorKind::StructMultipleUnnamedFields,
+                        span: fields.span(),
+                    });
+                }
+                let span = fields.span();
+                if let Some(field) = fields.unnamed.into_iter().next() {
+                    Ok(ast::StructVariant::UnnamedField(ast::UnnamedField {
+                        ty: ast::Type::from_ty(field.ty)?,
+                    }))
+                } else {
+                    Err(Error {
+                        kind: ErrorKind::UnitStruct,
+                        span,
+                    })
+                }
+            }
+            Fields::Unit => Err(Error {
+                kind: ErrorKind::UnitStruct,
+                span: fields.span(),
+            }),
         }
-        syn::Type::Reference(ty) => Ok(ast::Type::Reference(Box::new(build_type(*ty.elem)?))),
-        syn::Type::Infer(_)
-        | syn::Type::Never(_)
-        | syn::Type::ImplTrait(_)
-        | syn::Type::Ptr(_)
-        | syn::Type::TraitObject(_)
-        | syn::Type::Tuple(_)
-        | syn::Type::Verbatim(_) => Err(Error {
-            kind: ErrorKind::MiscTypes,
-            span: ty.span(),
-        }),
-        _ => Err(Error {
-            kind: ErrorKind::MiscTypes,
-            span: ty.span(),
-        }),
     }
 }
 
-fn build_type_arguments(arguments: PathArguments) -> Result<Vec<ast::Type>, Error> {
-    match arguments {
-        PathArguments::None => Ok(Vec::new()),
-        PathArguments::AngleBracketed(arguments) => arguments
-            .args
+impl ast::Enum {
+    fn from_content(
+        visibility: Visibility,
+        name: Ident,
+        generics: Generics,
+        data: DataEnum,
+    ) -> Result<Self, Error> {
+        Ok(ast::Enum {
+            visibility: ast::Visibility::from_visibility(visibility)?,
+            name: name.to_string(),
+            parameters: generics
+                .params
+                .into_iter()
+                .map(ast::GenericParameter::from_param)
+                .collect::<Result<_, _>>()?,
+            variants: data
+                .variants
+                .into_iter()
+                .map(ast::Variant::from_variant)
+                .collect::<Result<_, _>>()?,
+        })
+    }
+}
+
+impl ast::Variant {
+    fn from_variant(variant: Variant) -> Result<Self, Error> {
+        if let Some((_, expr)) = variant.discriminant {
+            return Err(Error {
+                kind: ErrorKind::ExplicicitDiscriminant,
+                span: expr.span(),
+            });
+        }
+
+        let content = ast::VariantContent::from_fields(variant.fields)?;
+
+        Ok(ast::Variant {
+            name: variant.ident.to_string(),
+            content,
+        })
+    }
+}
+
+impl ast::VariantContent {
+    fn from_fields(fields: Fields) -> Result<Self, Error> {
+        match fields {
+            Fields::Named(fields) => {
+                let fields = fields
+                    .named
+                    .into_iter()
+                    .map(|field| {
+                        Ok(ast::NamedField {
+                            name: field.ident.as_ref().unwrap().to_string(),
+                            ty: ast::Type::from_ty(field.ty)?,
+                        })
+                    })
+                    .collect::<Result<_, _>>()?;
+                Ok(ast::VariantContent::Named(fields))
+            }
+            Fields::Unnamed(fields) => {
+                if fields.unnamed.len() > 1 {
+                    return Err(Error {
+                        kind: ErrorKind::EnumMultipleUnnamedFields,
+                        span: fields.span(),
+                    });
+                }
+                let field = fields.unnamed.into_iter().next().unwrap();
+                let ty = ast::Type::from_ty(field.ty)?;
+                Ok(ast::VariantContent::Unnamed(ty))
+            }
+            Fields::Unit => Ok(ast::VariantContent::Unit),
+        }
+    }
+}
+
+impl ast::Type {
+    fn from_ty(ty: syn::Type) -> Result<Self, Error> {
+        match ty {
+            syn::Type::Slice(ty) => Ok(ast::Type::Slice(Box::new(ast::Type::from_ty(*ty.elem)?))),
+            syn::Type::Array(ty) => Ok(ast::Type::Array(Box::new(ast::Type::from_ty(*ty.elem)?))),
+            syn::Type::BareFn(ty) => Err(Error {
+                kind: ErrorKind::FunctionTypes,
+                span: ty.span(),
+            }),
+            syn::Type::Group(ty) => ast::Type::from_ty(*ty.elem),
+            syn::Type::Macro(_) => Err(Error {
+                kind: ErrorKind::Macros,
+                span: ty.span(),
+            }),
+            syn::Type::Paren(ty) => ast::Type::from_ty(*ty.elem),
+            syn::Type::Path(ty) => Ok(ast::Type::Path(ast::TypePath::from_type_path(ty)?)),
+            syn::Type::Reference(ty) => Ok(ast::Type::Reference(ast::TypeReference {
+                lifetime: ast::Lifetime {
+                    name: ty.lifetime.expect("missing lifetime").ident.to_string(),
+                },
+                ty: Box::new(ast::Type::from_ty(*ty.elem)?),
+            })),
+            syn::Type::Infer(_)
+            | syn::Type::Never(_)
+            | syn::Type::ImplTrait(_)
+            | syn::Type::Ptr(_)
+            | syn::Type::TraitObject(_)
+            | syn::Type::Tuple(_)
+            | syn::Type::Verbatim(_) => Err(Error {
+                kind: ErrorKind::MiscTypes,
+                span: ty.span(),
+            }),
+            _ => Err(Error {
+                kind: ErrorKind::MiscTypes,
+                span: ty.span(),
+            }),
+        }
+    }
+}
+
+impl ast::TypeReference {}
+
+impl ast::TypePath {
+    fn from_type_path(ty: TypePath) -> Result<Self, Error> {
+        if let Some(q) = &ty.qself {
+            return Err(Error {
+                kind: ErrorKind::SelfQualifiedTypes,
+                span: q.ty.span(),
+            });
+        }
+
+        let segments: Vec<_> = ty
+            .path
+            .segments
             .into_iter()
-            .map(|argument| match argument {
-                GenericArgument::Lifetime(lifetime) => Err(Error {
-                    kind: ErrorKind::Lifetimes,
-                    span: lifetime.span(),
-                }),
-                GenericArgument::Type(ty) => build_type(ty),
-                GenericArgument::Const(c) => Err(Error {
-                    kind: ErrorKind::ConstGenerics,
-                    span: c.span(),
-                }),
-                GenericArgument::Binding(binding) => Err(Error {
-                    kind: ErrorKind::MiscTypes,
-                    span: binding.span(),
-                }),
-                GenericArgument::Constraint(constraint) => Err(Error {
-                    kind: ErrorKind::GenericBounds,
-                    span: constraint.span(),
-                }),
-            })
-            .collect(),
-        PathArguments::Parenthesized(_) => todo!(),
+            .map(ast::PathSegment::from_segment)
+            .collect::<Result<_, _>>()?;
+
+        Ok(ast::TypePath { segments })
+    }
+}
+
+impl ast::PathSegment {
+    fn from_segment(segment: PathSegment) -> Result<Self, Error> {
+        Ok(ast::PathSegment {
+            name: segment.ident.to_string(),
+            arguments: match segment.arguments {
+                PathArguments::None => Vec::new(),
+                PathArguments::AngleBracketed(arguments) => arguments
+                    .args
+                    .into_iter()
+                    .map(ast::GenericArgument::from_argument)
+                    .collect::<Result<_, _>>()?,
+                PathArguments::Parenthesized(_) => todo!(),
+            },
+        })
+    }
+}
+
+impl ast::GenericArgument {
+    fn from_argument(argument: GenericArgument) -> Result<Self, Error> {
+        match argument {
+            GenericArgument::Lifetime(lifetime) => Ok(Self::Lifetime(lifetime.ident.to_string())),
+            GenericArgument::Type(ty) => {
+                let ty = ast::Type::from_ty(ty)?;
+                Ok(Self::Type(ty))
+            }
+            GenericArgument::Const(c) => Err(Error {
+                kind: ErrorKind::ConstGenerics,
+                span: c.span(),
+            }),
+            GenericArgument::Binding(binding) => Err(Error {
+                kind: ErrorKind::MiscTypes,
+                span: binding.span(),
+            }),
+            GenericArgument::Constraint(constraint) => Err(Error {
+                kind: ErrorKind::GenericBounds,
+                span: constraint.span(),
+            }),
+        }
     }
 }

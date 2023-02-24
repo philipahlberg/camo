@@ -1,9 +1,10 @@
-use camo::core::{Camo as _, Container, Attributes, Item, Struct, Visibility, StructVariant, NamedField, Type, TypePath, PathSegment};
+use camo::core::{Camo as _, Container, Attributes, Item, Struct, Visibility, GenericParameter, StructVariant, NamedField, Type, TypePath, PathSegment, TypeReference, Lifetime};
 use camo_derive::Camo;
 
 #[derive(Camo)]
-struct Foo<T> {
+struct Foo<'a, T> {
     foo: T,
+    bar: &'a str,
 }
 
 fn main() {
@@ -17,7 +18,10 @@ fn main() {
             item: Item::Struct(Struct {
                 visibility: Visibility::None,
                 name: "Foo",
-                arguments: Vec::from(["T"]),
+                parameters: Vec::from([
+                    GenericParameter::Lifetime("a"),
+                    GenericParameter::Type("T"),
+                ]),
                 content: StructVariant::NamedFields(
                     Vec::from([
                         NamedField {
@@ -26,6 +30,18 @@ fn main() {
                                 name: "T",
                                 arguments: Vec::new(),
                             }])),
+                        },
+                        NamedField {
+                            name: "bar",
+                            ty: Type::Reference(TypeReference {
+                                lifetime: Lifetime {
+                                    name: String::from("a"),
+                                },
+                                ty: Box::new(Type::Path(TypePath::from([PathSegment {
+                                    name: "str",
+                                    arguments: Vec::new(),
+                                }]))),
+                            }),
                         },
                     ])
                     )
