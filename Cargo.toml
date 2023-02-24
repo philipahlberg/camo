@@ -4,5 +4,6 @@ members = [
     "camo-core",
     "camo-derive",
     "camo-typescript",
+    "examples/basic",
     "examples/typescript",
 ]
