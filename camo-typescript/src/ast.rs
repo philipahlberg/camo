@@ -48,16 +48,42 @@ impl From<UnionType> for Definition {
     }
 }
 
-fn apply_rename_rule_to_field_name(rule: camo::RenameRule, name: &str) -> String {
-    match rule {
-        camo::RenameRule::LowerCase => name.to_lowercase(),
-        camo::RenameRule::UpperCase => name.to_uppercase(),
-        camo::RenameRule::PascalCase => snake_to_non_snake_case(true, name),
-        camo::RenameRule::CamelCase => snake_to_non_snake_case(false, name),
-        camo::RenameRule::SnakeCase => name.to_string(),
-        camo::RenameRule::ScreamingSnakeCase => name.to_uppercase(),
-        camo::RenameRule::KebabCase => name.replace('_', "-"),
-        camo::RenameRule::ScreamingKebabCase => name.to_uppercase().replace('_', "-"),
+#[derive(Clone, Copy)]
+struct Renamer(Option<camo::RenameRule>);
+
+impl Renamer {
+    fn rename_field(&self, name: &str) -> String {
+        let Self(rule) = self;
+        match rule {
+            Some(camo::RenameRule::LowerCase) => name.to_lowercase(),
+            Some(camo::RenameRule::UpperCase) => name.to_uppercase(),
+            Some(camo::RenameRule::PascalCase) => snake_to_non_snake_case(true, name),
+            Some(camo::RenameRule::CamelCase) => snake_to_non_snake_case(false, name),
+            Some(camo::RenameRule::SnakeCase) => name.to_string(),
+            Some(camo::RenameRule::ScreamingSnakeCase) => name.to_uppercase(),
+            Some(camo::RenameRule::KebabCase) => name.replace('_', "-"),
+            Some(camo::RenameRule::ScreamingKebabCase) => name.to_uppercase().replace('_', "-"),
+            None => name.to_string(),
+        }
+    }
+
+    fn rename_type(&self, name: &str) -> String {
+        let Self(rule) = self;
+        match rule {
+            Some(camo::RenameRule::LowerCase) => name.to_lowercase(),
+            Some(camo::RenameRule::UpperCase) => name.to_uppercase(),
+            Some(camo::RenameRule::PascalCase) => name.to_string(),
+            Some(camo::RenameRule::CamelCase) => name[..1].to_ascii_lowercase() + &name[1..],
+            Some(camo::RenameRule::SnakeCase) => pascal_to_separated_case('_', name),
+            Some(camo::RenameRule::ScreamingSnakeCase) => {
+                pascal_to_separated_case('_', name).to_uppercase()
+            }
+            Some(camo::RenameRule::KebabCase) => pascal_to_separated_case('-', name),
+            Some(camo::RenameRule::ScreamingKebabCase) => {
+                pascal_to_separated_case('-', name).to_uppercase()
+            }
+            None => name.to_string(),
+        }
     }
 }
 
@@ -77,19 +103,6 @@ fn snake_to_non_snake_case(capitalize_first: bool, field: &str) -> String {
     result
 }
 
-fn apply_rename_rule_to_type_name(rule: camo::RenameRule, name: &str) -> String {
-    match rule {
-        camo::RenameRule::LowerCase => name.to_lowercase(),
-        camo::RenameRule::UpperCase => name.to_uppercase(),
-        camo::RenameRule::PascalCase => name.to_string(),
-        camo::RenameRule::CamelCase => name[..1].to_ascii_lowercase() + &name[1..],
-        camo::RenameRule::SnakeCase => pascal_to_separated_case('_', name),
-        camo::RenameRule::ScreamingSnakeCase => pascal_to_separated_case('_', name).to_uppercase(),
-        camo::RenameRule::KebabCase => pascal_to_separated_case('-', name),
-        camo::RenameRule::ScreamingKebabCase => pascal_to_separated_case('-', name).to_uppercase(),
-    }
-}
-
 fn pascal_to_separated_case(separator: char, name: &str) -> String {
     let mut result = String::new();
     for (i, ch) in name.char_indices() {
@@ -103,8 +116,8 @@ fn pascal_to_separated_case(separator: char, name: &str) -> String {
 
 impl From<camo::Container> for Definition {
     fn from(container: camo::Container) -> Self {
-        let rename_rule = container.attributes.rename;
-        let rename_all_rule = container.attributes.rename_all;
+        let rename = Renamer(container.attributes.rename);
+        let rename_all = Renamer(container.attributes.rename_all);
         let tag_rule = container.attributes.tag;
         let content_rule = container.attributes.content;
 
@@ -112,20 +125,12 @@ impl From<camo::Container> for Definition {
             camo::Item::Struct(s) => match s.content {
                 camo::StructVariant::NamedFields(fields) => Definition::Interface(Interface {
                     export: s.visibility.is_pub(),
-                    name: if let Some(rule) = rename_rule {
-                        apply_rename_rule_to_type_name(rule, s.name)
-                    } else {
-                        s.name.to_string()
-                    },
+                    name: rename.rename_type(s.name),
                     parameters: s.arguments,
                     fields: fields
                         .into_iter()
                         .map(|field| Field {
-                            name: if let Some(rule) = rename_all_rule {
-                                apply_rename_rule_to_field_name(rule, field.name)
-                            } else {
-                                field.name.to_string()
-                            },
+                            name: rename_all.rename_field(field.name),
                             ty: Type::from(field.ty),
                         })
                         .collect(),
@@ -133,11 +138,7 @@ impl From<camo::Container> for Definition {
                 camo::StructVariant::UnnamedField(field) => {
                     Definition::Type(TypeDefinition::Alias(AliasType {
                         export: s.visibility.is_pub(),
-                        name: if let Some(rule) = rename_rule {
-                            apply_rename_rule_to_type_name(rule, s.name)
-                        } else {
-                            s.name.to_string()
-                        },
+                        name: rename.rename_type(s.name),
                         parameters: s.arguments,
                         ty: Type::from(field.ty),
                     }))
@@ -146,12 +147,12 @@ impl From<camo::Container> for Definition {
             camo::Item::Enum(ty) => {
                 Definition::Type(TypeDefinition::Union(if let Some(tag) = tag_rule {
                     if let Some(content) = content_rule {
-                        UnionType::adjacently_tagged(rename_rule, rename_all_rule, tag, content, ty)
+                        UnionType::adjacently_tagged(rename, rename_all, tag, content, ty)
                     } else {
-                        UnionType::internally_tagged(rename_rule, rename_all_rule, tag, ty)
+                        UnionType::internally_tagged(rename, rename_all, tag, ty)
                     }
                 } else {
-                    UnionType::externally_tagged(rename_rule, rename_all_rule, ty)
+                    UnionType::externally_tagged(rename, rename_all, ty)
                 }))
             }
         }
@@ -304,18 +305,10 @@ pub struct UnionType {
 }
 
 impl UnionType {
-    fn externally_tagged(
-        rename: Option<camo::RenameRule>,
-        rename_all: Option<camo::RenameRule>,
-        ty: camo::Enum,
-    ) -> Self {
+    fn externally_tagged(rename: Renamer, rename_all: Renamer, ty: camo::Enum) -> Self {
         Self {
             export: ty.visibility.is_pub(),
-            name: if let Some(rule) = rename {
-                apply_rename_rule_to_type_name(rule, ty.name)
-            } else {
-                ty.name.to_string()
-            },
+            name: rename.rename_type(ty.name),
             parameters: ty.arguments,
             variants: ty
                 .variants
@@ -326,19 +319,15 @@ impl UnionType {
     }
 
     fn adjacently_tagged(
-        rename: Option<camo::RenameRule>,
-        rename_all: Option<camo::RenameRule>,
+        rename: Renamer,
+        rename_all: Renamer,
         tag: &'static str,
         content: &'static str,
         ty: camo::Enum,
     ) -> Self {
         Self {
             export: ty.visibility.is_pub(),
-            name: if let Some(rule) = rename {
-                apply_rename_rule_to_type_name(rule, ty.name)
-            } else {
-                ty.name.to_string()
-            },
+            name: rename.rename_type(ty.name),
             parameters: ty.arguments,
             variants: ty
                 .variants
@@ -349,18 +338,14 @@ impl UnionType {
     }
 
     fn internally_tagged(
-        rename: Option<camo::RenameRule>,
-        rename_all: Option<camo::RenameRule>,
+        rename: Renamer,
+        rename_all: Renamer,
         tag: &'static str,
         ty: camo::Enum,
     ) -> Self {
         Self {
             export: ty.visibility.is_pub(),
-            name: if let Some(rule) = rename {
-                apply_rename_rule_to_type_name(rule, ty.name)
-            } else {
-                ty.name.to_string()
-            },
+            name: rename.rename_field(ty.name),
             parameters: ty.arguments,
             variants: ty
                 .variants
@@ -396,41 +381,25 @@ impl fmt::Display for UnionType {
 pub struct Variant(pub Type);
 
 impl Variant {
-    fn externally_tagged(rename_all: Option<camo::RenameRule>, variant: camo::Variant) -> Self {
+    fn externally_tagged(rename_all: Renamer, variant: camo::Variant) -> Self {
         match variant.content {
             camo::VariantContent::Unit => Self(Type::Literal(LiteralType::String(
-                if let Some(rule) = rename_all {
-                    apply_rename_rule_to_type_name(rule, variant.name)
-                } else {
-                    String::from(variant.name)
-                },
+                rename_all.rename_type(variant.name),
             ))),
             camo::VariantContent::Unnamed(ty) => Self(Type::Object(ObjectType {
                 fields: Vec::from([Field {
-                    name: if let Some(rule) = rename_all {
-                        apply_rename_rule_to_type_name(rule, variant.name)
-                    } else {
-                        variant.name.to_string()
-                    },
+                    name: rename_all.rename_type(variant.name),
                     ty: Type::from(ty),
                 }]),
             })),
             camo::VariantContent::Named(fields) => Self(Type::Object(ObjectType {
                 fields: Vec::from([Field {
-                    name: if let Some(rule) = rename_all {
-                        apply_rename_rule_to_type_name(rule, variant.name)
-                    } else {
-                        variant.name.to_string()
-                    },
+                    name: rename_all.rename_type(variant.name),
                     ty: Type::Object(ObjectType {
                         fields: fields
                             .into_iter()
                             .map(|field| Field {
-                                name: if let Some(rule) = rename_all {
-                                    apply_rename_rule_to_field_name(rule, field.name)
-                                } else {
-                                    field.name.to_string()
-                                },
+                                name: field.name.to_string(),
                                 ty: Type::from(field.ty),
                             })
                             .collect(),
@@ -441,34 +410,28 @@ impl Variant {
     }
 
     fn adjacently_tagged(
-        rename_all: Option<camo::RenameRule>,
-        tag_name: &'static str,
-        content_name: &'static str,
+        rename_all: Renamer,
+        tag: &'static str,
+        content: &'static str,
         variant: camo::Variant,
     ) -> Self {
         match variant.content {
             camo::VariantContent::Unit => Self(Type::Object(ObjectType {
                 fields: Vec::from([Field {
-                    name: String::from(tag_name),
-                    ty: Type::Literal(LiteralType::String(if let Some(rule) = rename_all {
-                        apply_rename_rule_to_type_name(rule, variant.name)
-                    } else {
-                        variant.name.to_string()
-                    })),
+                    name: String::from(tag),
+                    ty: Type::Literal(LiteralType::String(rename_all.rename_type(variant.name))),
                 }]),
             })),
             camo::VariantContent::Unnamed(ty) => Self(Type::Object(ObjectType {
                 fields: Vec::from([
                     Field {
-                        name: String::from(tag_name),
-                        ty: Type::Literal(LiteralType::String(if let Some(rule) = rename_all {
-                            apply_rename_rule_to_type_name(rule, variant.name)
-                        } else {
-                            variant.name.to_string()
-                        })),
+                        name: String::from(tag),
+                        ty: Type::Literal(LiteralType::String(
+                            rename_all.rename_type(variant.name),
+                        )),
                     },
                     Field {
-                        name: String::from(content_name),
+                        name: String::from(content),
                         ty: Type::from(ty),
                     },
                 ]),
@@ -476,24 +439,18 @@ impl Variant {
             camo::VariantContent::Named(fields) => Self(Type::Object(ObjectType {
                 fields: Vec::from([
                     Field {
-                        name: String::from(tag_name),
-                        ty: Type::Literal(LiteralType::String(if let Some(rule) = rename_all {
-                            apply_rename_rule_to_type_name(rule, variant.name)
-                        } else {
-                            variant.name.to_string()
-                        })),
+                        name: String::from(tag),
+                        ty: Type::Literal(LiteralType::String(
+                            rename_all.rename_type(variant.name),
+                        )),
                     },
                     Field {
-                        name: String::from(content_name),
+                        name: String::from(content),
                         ty: Type::Object(ObjectType {
                             fields: fields
                                 .into_iter()
                                 .map(|field| Field {
-                                    name: if let Some(rule) = rename_all {
-                                        apply_rename_rule_to_field_name(rule, field.name)
-                                    } else {
-                                        field.name.to_string()
-                                    },
+                                    name: field.name.to_string(),
                                     ty: Type::from(field.ty),
                                 })
                                 .collect(),
@@ -504,31 +461,21 @@ impl Variant {
         }
     }
 
-    fn internally_tagged(
-        rename_all: Option<camo::RenameRule>,
-        tag: &'static str,
-        variant: camo::Variant,
-    ) -> Self {
+    fn internally_tagged(rename_all: Renamer, tag: &'static str, variant: camo::Variant) -> Self {
         match variant.content {
             camo::VariantContent::Unit => Self(Type::Object(ObjectType {
                 fields: Vec::from([Field {
                     name: String::from(tag),
-                    ty: Type::Literal(LiteralType::String(if let Some(rule) = rename_all {
-                        apply_rename_rule_to_type_name(rule, variant.name)
-                    } else {
-                        String::from(variant.name)
-                    })),
+                    ty: Type::Literal(LiteralType::String(rename_all.rename_type(variant.name))),
                 }]),
             })),
             camo::VariantContent::Unnamed(ty) => Self(Type::Intersection(IntersectionType {
                 left: Box::new(Type::Object(ObjectType {
                     fields: Vec::from([Field {
                         name: String::from(tag),
-                        ty: Type::Literal(LiteralType::String(if let Some(rule) = rename_all {
-                            apply_rename_rule_to_type_name(rule, variant.name)
-                        } else {
-                            variant.name.to_string()
-                        })),
+                        ty: Type::Literal(LiteralType::String(
+                            rename_all.rename_type(variant.name),
+                        )),
                     }]),
                 })),
                 right: Box::new(Type::from(ty)),
@@ -537,22 +484,16 @@ impl Variant {
                 left: Box::new(Type::Object(ObjectType {
                     fields: Vec::from([Field {
                         name: String::from(tag),
-                        ty: Type::Literal(LiteralType::String(if let Some(rule) = rename_all {
-                            apply_rename_rule_to_type_name(rule, variant.name)
-                        } else {
-                            variant.name.to_string()
-                        })),
+                        ty: Type::Literal(LiteralType::String(
+                            rename_all.rename_type(variant.name),
+                        )),
                     }]),
                 })),
                 right: Box::new(Type::Object(ObjectType {
                     fields: fields
                         .into_iter()
                         .map(|field| Field {
-                            name: if let Some(rule) = rename_all {
-                                apply_rename_rule_to_field_name(rule, field.name)
-                            } else {
-                                field.name.to_string()
-                            },
+                            name: field.name.to_string(),
                             ty: Type::from(field.ty),
                         })
                         .collect(),
