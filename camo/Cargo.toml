@@ -19,5 +19,6 @@ camo-typescript = { path = "../camo-typescript", optional = true }
 [dev-dependencies]
 
 [features]
+default = ["derive"]
 derive = ["camo-derive"]
 typescript = ["camo-typescript"]
