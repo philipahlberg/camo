@@ -12,9 +12,9 @@
 //! ```
 
 mod ast;
-mod derive_camo;
+mod derive;
 
-use derive_camo::derive;
+use derive::derive;
 use proc_macro::TokenStream;
 use syn::{parse_macro_input, DeriveInput};
 

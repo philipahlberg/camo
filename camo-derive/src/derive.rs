@@ -9,6 +9,19 @@ use syn::{
 
 use crate::ast;
 
+pub fn derive(input: DeriveInput) -> TokenStream {
+    match Impl::from_input(input) {
+        Ok(v) => v.into_token_stream(),
+        Err(error) => {
+            if let ErrorKind::Syn(err) = error.kind {
+                err.into_compile_error()
+            } else {
+                syn::Error::new(error.span, error.kind.message()).into_compile_error()
+            }
+        }
+    }
+}
+
 pub struct Error {
     pub kind: ErrorKind,
     pub span: Span,
@@ -54,19 +67,6 @@ impl ErrorKind {
             Self::InvalidRenameRule => "`camo`: invalid rename rule",
             Self::VisibilityCrate => "`camo` does not support `crate` visibility",
             Self::VisibilityRestricted => "`camo` does not support restricted visibility",
-        }
-    }
-}
-
-pub fn derive(input: DeriveInput) -> TokenStream {
-    match Impl::from_input(input) {
-        Ok(v) => v.into_token_stream(),
-        Err(error) => {
-            if let ErrorKind::Syn(err) = error.kind {
-                err.into_compile_error()
-            } else {
-                syn::Error::new(error.span, error.kind.message()).into_compile_error()
-            }
         }
     }
 }
