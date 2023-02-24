@@ -1,4 +1,4 @@
-use camo::core::{Camo as _, Container, Attributes, Item, Enum, Visibility, Variant, VariantContent, Type, PathSegment, TypePath};
+use camo::core::{Camo as _, Container, ContainerAttributes, Item, Enum, Visibility, Variant, VariantAttributes, VariantContent, Type, PathSegment, TypePath};
 use camo_derive::Camo;
 
 struct Bar {
@@ -17,13 +17,14 @@ fn main() {
     assert_eq!(
         foo,
         Container {
-            attributes: Attributes::default(),
+            attributes: ContainerAttributes::default(),
             item: Item::Enum(Enum {
                 visibility: Visibility::None,
                 name: "Foo",
                 parameters: Vec::new(),
                 variants: Vec::from([
                     Variant {
+                        attributes: VariantAttributes::default(),
                         name: "U32",
                         content: VariantContent::Unnamed(Type::Path(TypePath::from([PathSegment {
                             name: "u32",
@@ -31,6 +32,7 @@ fn main() {
                         }]))),
                     },
                     Variant {
+                        attributes: VariantAttributes::default(),
                         name: "Bar",
                         content: VariantContent::Unnamed(Type::Path(TypePath::from([PathSegment {
                             name: "Bar",

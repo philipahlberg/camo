@@ -8,8 +8,8 @@ fn tests() {
     cases.pass("tests/pass/enum_named_fields.rs");
     cases.pass("tests/pass/generics.rs");
     cases.pass("tests/pass/newtype.rs");
-    cases.pass("tests/pass/serde_rename.rs");
-    cases.pass("tests/pass/serde_tag_content.rs");
+    cases.pass("tests/pass/serde_attributes_container.rs");
+    cases.pass("tests/pass/serde_attributes_variant.rs");
     cases.compile_fail("tests/fail/bounded_generics.rs");
     cases.compile_fail("tests/fail/union.rs");
     cases.compile_fail("tests/fail/const_generics.rs");

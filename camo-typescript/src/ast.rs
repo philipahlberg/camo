@@ -422,24 +422,29 @@ pub struct Variant(pub Type);
 
 impl Variant {
     fn externally_tagged(rename_all: Renamer, variant: camo::Variant) -> Self {
+        let variant_renamer = match variant.attributes.rename {
+            Some(rename) => Renamer(Some(rename)),
+            None => rename_all,
+        };
+        let field_renamer = Renamer(variant.attributes.rename_all);
         match variant.content {
             camo::VariantContent::Unit => Self(Type::Literal(LiteralType::String(
-                rename_all.rename_type(variant.name),
+                variant_renamer.rename_type(variant.name),
             ))),
             camo::VariantContent::Unnamed(ty) => Self(Type::Object(ObjectType {
                 fields: Vec::from([Field {
-                    name: rename_all.rename_type(variant.name),
+                    name: variant_renamer.rename_type(variant.name),
                     ty: Type::from(ty),
                 }]),
             })),
             camo::VariantContent::Named(fields) => Self(Type::Object(ObjectType {
                 fields: Vec::from([Field {
-                    name: rename_all.rename_type(variant.name),
+                    name: variant_renamer.rename_type(variant.name),
                     ty: Type::Object(ObjectType {
                         fields: fields
                             .into_iter()
                             .map(|field| Field {
-                                name: field.name.to_string(),
+                                name: field_renamer.rename_field(field.name),
                                 ty: Type::from(field.ty),
                             })
                             .collect(),
@@ -455,11 +460,18 @@ impl Variant {
         content: &'static str,
         variant: camo::Variant,
     ) -> Self {
+        let variant_renamer = match variant.attributes.rename {
+            Some(rename) => Renamer(Some(rename)),
+            None => rename_all,
+        };
+        let field_renamer = Renamer(variant.attributes.rename_all);
         match variant.content {
             camo::VariantContent::Unit => Self(Type::Object(ObjectType {
                 fields: Vec::from([Field {
                     name: String::from(tag),
-                    ty: Type::Literal(LiteralType::String(rename_all.rename_type(variant.name))),
+                    ty: Type::Literal(LiteralType::String(
+                        variant_renamer.rename_type(variant.name),
+                    )),
                 }]),
             })),
             camo::VariantContent::Unnamed(ty) => Self(Type::Object(ObjectType {
@@ -467,7 +479,7 @@ impl Variant {
                     Field {
                         name: String::from(tag),
                         ty: Type::Literal(LiteralType::String(
-                            rename_all.rename_type(variant.name),
+                            variant_renamer.rename_type(variant.name),
                         )),
                     },
                     Field {
@@ -481,7 +493,7 @@ impl Variant {
                     Field {
                         name: String::from(tag),
                         ty: Type::Literal(LiteralType::String(
-                            rename_all.rename_type(variant.name),
+                            variant_renamer.rename_type(variant.name),
                         )),
                     },
                     Field {
@@ -490,7 +502,7 @@ impl Variant {
                             fields: fields
                                 .into_iter()
                                 .map(|field| Field {
-                                    name: field.name.to_string(),
+                                    name: field_renamer.rename_field(field.name),
                                     ty: Type::from(field.ty),
                                 })
                                 .collect(),
@@ -502,11 +514,18 @@ impl Variant {
     }
 
     fn internally_tagged(rename_all: Renamer, tag: &'static str, variant: camo::Variant) -> Self {
+        let variant_renamer = match variant.attributes.rename {
+            Some(rename) => Renamer(Some(rename)),
+            None => rename_all,
+        };
+        let field_renamer = Renamer(variant.attributes.rename_all);
         match variant.content {
             camo::VariantContent::Unit => Self(Type::Object(ObjectType {
                 fields: Vec::from([Field {
                     name: String::from(tag),
-                    ty: Type::Literal(LiteralType::String(rename_all.rename_type(variant.name))),
+                    ty: Type::Literal(LiteralType::String(
+                        variant_renamer.rename_type(variant.name),
+                    )),
                 }]),
             })),
             camo::VariantContent::Unnamed(ty) => Self(Type::Intersection(IntersectionType {
@@ -514,7 +533,7 @@ impl Variant {
                     fields: Vec::from([Field {
                         name: String::from(tag),
                         ty: Type::Literal(LiteralType::String(
-                            rename_all.rename_type(variant.name),
+                            variant_renamer.rename_type(variant.name),
                         )),
                     }]),
                 })),
@@ -525,7 +544,7 @@ impl Variant {
                     fields: Vec::from([Field {
                         name: String::from(tag),
                         ty: Type::Literal(LiteralType::String(
-                            rename_all.rename_type(variant.name),
+                            variant_renamer.rename_type(variant.name),
                         )),
                     }]),
                 })),
@@ -533,7 +552,7 @@ impl Variant {
                     fields: fields
                         .into_iter()
                         .map(|field| Field {
-                            name: field.name.to_string(),
+                            name: field_renamer.rename_field(field.name),
                             ty: Type::from(field.ty),
                         })
                         .collect(),

@@ -1,4 +1,4 @@
-use camo::core::{Camo as _, Container, Attributes, Item, Enum, Visibility, Variant, VariantContent, NamedField, Type, PathSegment, TypePath};
+use camo::core::{Camo as _, Container, ContainerAttributes, Item, Enum, Visibility, Variant, VariantAttributes, VariantContent, NamedField, Type, PathSegment, TypePath};
 use camo_derive::Camo;
 
 #[derive(Camo)]
@@ -12,13 +12,14 @@ fn main() {
     assert_eq!(
         foo,
         Container {
-            attributes: Attributes::default(),
+            attributes: ContainerAttributes::default(),
             item: Item::Enum(Enum {
                 visibility: Visibility::None,
                 name: "Foo",
                 parameters: Vec::new(),
                 variants: Vec::from([
                     Variant {
+                        attributes: VariantAttributes::default(),
                         name: "One",
                         content: VariantContent::Named(Vec::from([
                             NamedField {

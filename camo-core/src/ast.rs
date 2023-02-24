@@ -2,12 +2,12 @@ use std::convert::TryFrom;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Container {
-    pub attributes: Attributes,
+    pub attributes: ContainerAttributes,
     pub item: Item,
 }
 
 #[derive(Debug, Default, Clone, PartialEq)]
-pub struct Attributes {
+pub struct ContainerAttributes {
     pub rename: Option<RenameRule>,
     pub rename_all: Option<RenameRule>,
     pub tag: Option<&'static str>,
@@ -110,10 +110,18 @@ pub struct Enum {
 /// A variant of an enum.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Variant {
+    /// The attributes placed directly on the variant.
+    pub attributes: VariantAttributes,
     /// The name of the variant.
     pub name: &'static str,
     /// The content of the variant.
     pub content: VariantContent,
+}
+
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct VariantAttributes {
+    pub rename: Option<RenameRule>,
+    pub rename_all: Option<RenameRule>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -336,7 +336,7 @@ fn display_enum() {
 }
 
 #[test]
-fn serde_rename_struct() {
+fn serde_container_rename_struct() {
     #[derive(Camo, Serialize, Deserialize)]
     #[serde(rename = "camelCase")]
     struct FooBar {
@@ -367,7 +367,7 @@ fn serde_rename_struct() {
 }
 
 #[test]
-fn serde_rename_enum() {
+fn serde_container_rename_enum() {
     #[derive(Camo, Serialize, Deserialize)]
     #[serde(rename = "camelCase")]
     enum FooBar {
@@ -405,7 +405,7 @@ fn serde_rename_enum() {
 }
 
 #[test]
-fn serde_rename_all_struct() {
+fn serde_container_rename_all_struct() {
     #[derive(Camo, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     struct Foo {
@@ -436,7 +436,7 @@ fn serde_rename_all_struct() {
 }
 
 #[test]
-fn serde_rename_all_enum() {
+fn serde_container_rename_all_enum() {
     #[derive(Camo, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     enum FooBar {
@@ -463,6 +463,88 @@ fn serde_rename_all_enum() {
                         ty: Type::Object(ObjectType {
                             fields: Vec::from([Field {
                                 name: String::from("value"),
+                                ty: Type::Builtin(BuiltinType::String)
+                            }])
+                        })
+                    }])
+                })),
+            ]),
+        }))
+    )
+}
+
+#[test]
+fn serde_variant_rename() {
+    #[derive(Camo, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    enum FooBar {
+        #[serde(rename = "UPPERCASE")]
+        VariantOne(i32),
+        VariantTwo {
+            value: String,
+        },
+    }
+
+    assert_eq!(
+        Definition::from(FooBar::camo()),
+        Definition::Type(TypeDefinition::Union(UnionType {
+            export: false,
+            name: String::from("FooBar"),
+            parameters: Vec::new(),
+            variants: Vec::from([
+                Variant(Type::Object(ObjectType {
+                    fields: Vec::from([Field {
+                        name: String::from("VARIANTONE"),
+                        ty: Type::Builtin(BuiltinType::Number)
+                    }])
+                })),
+                Variant(Type::Object(ObjectType {
+                    fields: Vec::from([Field {
+                        name: String::from("variantTwo"),
+                        ty: Type::Object(ObjectType {
+                            fields: Vec::from([Field {
+                                name: String::from("value"),
+                                ty: Type::Builtin(BuiltinType::String)
+                            }])
+                        })
+                    }])
+                })),
+            ]),
+        }))
+    )
+}
+
+#[test]
+fn serde_variant_rename_all() {
+    #[derive(Camo, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    enum FooBar {
+        VariantOne(i32),
+        #[serde(rename_all = "UPPERCASE")]
+        VariantTwo {
+            value: String,
+        },
+    }
+
+    assert_eq!(
+        Definition::from(FooBar::camo()),
+        Definition::Type(TypeDefinition::Union(UnionType {
+            export: false,
+            name: String::from("FooBar"),
+            parameters: Vec::new(),
+            variants: Vec::from([
+                Variant(Type::Object(ObjectType {
+                    fields: Vec::from([Field {
+                        name: String::from("variantOne"),
+                        ty: Type::Builtin(BuiltinType::Number)
+                    }])
+                })),
+                Variant(Type::Object(ObjectType {
+                    fields: Vec::from([Field {
+                        name: String::from("variantTwo"),
+                        ty: Type::Object(ObjectType {
+                            fields: Vec::from([Field {
+                                name: String::from("VALUE"),
                                 ty: Type::Builtin(BuiltinType::String)
                             }])
                         })

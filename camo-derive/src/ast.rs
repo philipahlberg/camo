@@ -3,29 +3,16 @@ use quote::quote;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Container {
-    pub serde: Option<SerdeAttributes>,
+    pub serde: Option<SerdeContainerAttributes>,
     pub item: Item,
 }
 
 impl Container {
     pub fn into_token_stream(self) -> TokenStream {
         let attributes = match self.serde {
-            Some(serde) => {
-                let rename = rename_rule_opt_to_token_stream(serde.rename);
-                let rename_all = rename_rule_opt_to_token_stream(serde.rename_all);
-                let tag = literal_attr_opt_to_token_stream(serde.tag);
-                let content = literal_attr_opt_to_token_stream(serde.content);
-                quote! {
-                    ::camo::core::Attributes {
-                        rename: #rename,
-                        rename_all: #rename_all,
-                        tag: #tag,
-                        content: #content,
-                    }
-                }
-            }
+            Some(serde) => serde.into_token_stream(),
             None => quote! {
-                ::camo::core::Attributes {
+                ::camo::core::ContainerAttributes {
                     rename: ::core::option::Option::None,
                     rename_all: ::core::option::Option::None,
                     tag: ::core::option::Option::None,
@@ -62,11 +49,28 @@ fn literal_attr_opt_to_token_stream(opt: Option<String>) -> TokenStream {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct SerdeAttributes {
+pub struct SerdeContainerAttributes {
     pub rename_all: Option<RenameRule>,
     pub rename: Option<RenameRule>,
     pub tag: Option<String>,
     pub content: Option<String>,
+}
+
+impl SerdeContainerAttributes {
+    fn into_token_stream(self) -> TokenStream {
+        let rename = rename_rule_opt_to_token_stream(self.rename);
+        let rename_all = rename_rule_opt_to_token_stream(self.rename_all);
+        let tag = literal_attr_opt_to_token_stream(self.tag);
+        let content = literal_attr_opt_to_token_stream(self.content);
+        quote! {
+            ::camo::core::ContainerAttributes {
+                rename: #rename,
+                rename_all: #rename_all,
+                tag: #tag,
+                content: #content,
+            }
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -294,18 +298,48 @@ impl Enum {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Variant {
+    pub serde: Option<SerdeVariantAttributes>,
     pub name: String,
     pub content: VariantContent,
 }
 
 impl Variant {
     fn into_token_stream(self) -> TokenStream {
+        let attributes = match self.serde {
+            Some(serde) => serde.into_token_stream(),
+            None => quote! {
+                ::camo::core::VariantAttributes {
+                    rename: ::core::option::Option::None,
+                    rename_all: ::core::option::Option::None,
+                }
+            },
+        };
         let name = self.name;
         let content = self.content.into_token_stream();
         quote! {
             ::camo::core::Variant {
+                attributes: #attributes,
                 name: #name,
                 content: #content,
+            }
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct SerdeVariantAttributes {
+    pub rename: Option<RenameRule>,
+    pub rename_all: Option<RenameRule>,
+}
+
+impl SerdeVariantAttributes {
+    fn into_token_stream(self) -> TokenStream {
+        let rename = rename_rule_opt_to_token_stream(self.rename);
+        let rename_all = rename_rule_opt_to_token_stream(self.rename_all);
+        quote! {
+            ::camo::core::VariantAttributes {
+                rename: #rename,
+                rename_all: #rename_all,
             }
         }
     }

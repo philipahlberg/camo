@@ -1,4 +1,4 @@
-use camo::core::{Camo as _, Container, Attributes, Item, Struct, Visibility, StructVariant, NamedField, Type, PathSegment, TypePath};
+use camo::core::{Camo as _, Container, ContainerAttributes, Item, Struct, Visibility, StructVariant, NamedField, Type, PathSegment, TypePath};
 use camo_derive::Camo;
 
 #[derive(Camo)]
@@ -14,7 +14,7 @@ fn main() {
     assert_eq!(
         foo,
         Container {
-            attributes: Attributes::default(),
+            attributes: ContainerAttributes::default(),
             item: Item::Struct(Struct {
                 visibility: Visibility::Pub,
                 name: "Foo",

@@ -2,8 +2,9 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::spanned::Spanned;
 use syn::{
-    AttrStyle, Data, DataEnum, DataStruct, DeriveInput, Fields, GenericArgument, GenericParam,
-    Generics, Meta, MetaList, PathArguments, PathSegment, TypePath, Variant, Visibility,
+    AttrStyle, Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, GenericArgument,
+    GenericParam, Generics, Meta, MetaList, PathArguments, PathSegment, TypePath, Variant,
+    Visibility,
 };
 
 use crate::ast;
@@ -109,36 +110,13 @@ impl Impl {
 
 impl ast::Container {
     fn from_input(input: DeriveInput) -> Result<Self, Error> {
-        let meta = input
+        let serde = input
             .attrs
             .iter()
-            .find_map(|attr| match attr.style {
-                AttrStyle::Outer => {
-                    if attr.path.segments.len() != 1 {
-                        return None;
-                    }
-                    let segment = attr.path.segments.first().unwrap();
-                    if segment.ident != "serde" {
-                        return None;
-                    }
-                    match attr.parse_meta() {
-                        Ok(Meta::Path(_)) => None,
-                        Ok(Meta::List(list)) => Some(Ok(list)),
-                        Ok(Meta::NameValue(_)) => None,
-                        Err(err) => {
-                            let span = err.span();
-                            Some(Err(Error {
-                                kind: ErrorKind::Syn(err),
-                                span,
-                            }))
-                        }
-                    }
-                }
-                AttrStyle::Inner(_) => None,
-            })
+            .find_map(SerdeAttributeList::from_attribute)
+            .transpose()?
+            .map(ast::SerdeContainerAttributes::from_list)
             .transpose()?;
-
-        let serde = meta.map(ast::SerdeAttributes::from_meta_list).transpose()?;
 
         let item = ast::Item::from_input(input)?;
 
@@ -146,8 +124,40 @@ impl ast::Container {
     }
 }
 
-impl ast::SerdeAttributes {
-    fn from_meta_list(meta: MetaList) -> Result<Self, Error> {
+struct SerdeAttributeList(MetaList);
+
+impl SerdeAttributeList {
+    fn from_attribute(attr: &Attribute) -> Option<Result<Self, Error>> {
+        match attr.style {
+            AttrStyle::Outer => {
+                if attr.path.segments.len() != 1 {
+                    return None;
+                }
+                let segment = attr.path.segments.first().unwrap();
+                if segment.ident != "serde" {
+                    return None;
+                }
+                match attr.parse_meta() {
+                    Ok(Meta::Path(_)) => None,
+                    Ok(Meta::List(list)) => Some(Ok(Self(list))),
+                    Ok(Meta::NameValue(_)) => None,
+                    Err(err) => {
+                        let span = err.span();
+                        Some(Err(Error {
+                            kind: ErrorKind::Syn(err),
+                            span,
+                        }))
+                    }
+                }
+            }
+            AttrStyle::Inner(_) => None,
+        }
+    }
+}
+
+impl ast::SerdeContainerAttributes {
+    fn from_list(list: SerdeAttributeList) -> Result<Self, Error> {
+        let SerdeAttributeList(meta) = list;
         let rules: Result<Vec<_>, _> = meta
             .nested
             .into_iter()
@@ -414,12 +424,53 @@ impl ast::Variant {
             });
         }
 
+        let serde = variant
+            .attrs
+            .iter()
+            .find_map(SerdeAttributeList::from_attribute)
+            .transpose()?
+            .map(ast::SerdeVariantAttributes::from_list)
+            .transpose()?;
+
         let content = ast::VariantContent::from_fields(variant.fields)?;
 
         Ok(ast::Variant {
+            serde,
             name: variant.ident.to_string(),
             content,
         })
+    }
+}
+
+impl ast::SerdeVariantAttributes {
+    fn from_list(list: SerdeAttributeList) -> Result<Self, Error> {
+        let SerdeAttributeList(meta) = list;
+        let rules: Result<Vec<_>, _> = meta
+            .nested
+            .into_iter()
+            .filter_map(|nested| match nested {
+                syn::NestedMeta::Meta(meta) => SerdeAttribute::from_meta(meta),
+                syn::NestedMeta::Lit(_) => None,
+            })
+            .collect();
+
+        let rules = rules?;
+
+        let rename_all = rules.iter().find_map(|attr| match attr {
+            SerdeAttribute::Rename(_) => None,
+            SerdeAttribute::RenameAll(r) => Some(*r),
+            SerdeAttribute::Tag(_) => None,
+            SerdeAttribute::Content(_) => None,
+        });
+
+        let rename = rules.iter().find_map(|attr| match attr {
+            SerdeAttribute::Rename(r) => Some(*r),
+            SerdeAttribute::RenameAll(_) => None,
+            SerdeAttribute::Tag(_) => None,
+            SerdeAttribute::Content(_) => None,
+        });
+
+        Ok(Self { rename, rename_all })
     }
 }
 
