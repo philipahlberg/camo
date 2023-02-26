@@ -25,7 +25,7 @@
 //!
 //! Add the `Camo` derive macro to your type:
 //!
-//! ```rs
+//! ```rust
 //! use camo::{
 //!     // The trait (so we can use `Book::camo()`)
 //!     core::Camo as _,
@@ -44,7 +44,7 @@
 //!
 //! Use the generated `Camo::camo()` implementation:
 //!
-//! ```rs
+//! ```rust
 //! fn main() {
 //!     let book = Book::camo();
 //!     println!("{:?}", book);
@@ -53,7 +53,7 @@
 //!
 //! With the `typescript` feature enabled, create a TypeScript definition:
 //!
-//! ```rs
+//! ```rust
 //! use camo::{
 //!     /* ... */
 //!     typescript::Definition,
@@ -85,6 +85,21 @@
 //! | ------------ | ------- | ----------- |
 //! | `derive`     | Yes     | Enables the [`derive::Camo`] derive macro. |
 //! | `typescript` | No      | Enables the TypeScript backend, rooted in [`typescript::Definition`]. |
+//! 
+//! 
+//! [cratesio-link-camo]: https://crates.io/crates/camo
+//! [cratesio-link-camo-core]: https://crates.io/crates/camo-core
+//! [cratesio-link-camo-derive]: https://crates.io/crates/camo-derive
+//! [cratesio-link-camo-typescript]: https://crates.io/crates/camo-typescript
+//! [cratesio-badge-camo]: https://img.shields.io/crates/v/camo?label=docs&style=for-the-badge&logo=rust
+//! 
+//! [github-link-examples]: https://github.com/philipahlberg/camo/tree/main/examples
+//! 
+//! [`core::Container`]: https://docs.rs/camo/0/core/struct.Container.html
+//! [`core::Camo`]: https://docs.rs/camo/0/core/trait.Camo.html
+//! [`derive::Camo`]: https://docs.rs/camo/0/derive/macro.Camo.html
+//! [`typescript`]: https://docs.rs/camo/0/typescript/index.html
+//! [`typescript::Definition`]: https://docs.rs/camo/0/typescript/enum.Definition.html
 
 /// The data structures used to construct abstract syntax trees for types.
 pub use camo_core as core;

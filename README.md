@@ -29,7 +29,7 @@ cargo add camo --features typescript
 
 Add the `Camo` derive macro to your type:
 
-```rs
+```rust
 use camo::{
     // The trait (so we can use `Book::camo()`)
     core::Camo as _,
@@ -48,7 +48,7 @@ struct Book {
 
 Use the generated `Camo::camo()` implementation:
 
-```rs
+```rust
 fn main() {
     let book = Book::camo();
     println!("{:?}", book);
@@ -57,7 +57,7 @@ fn main() {
 
 With the `typescript` feature enabled, create a TypeScript definition:
 
-```rs
+```rust
 use camo::{
     /* ... */
     typescript::Definition,
