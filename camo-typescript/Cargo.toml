@@ -1,6 +1,6 @@
 [package]
 name = "camo-typescript"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["philipahlberg <philipahlberg@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/philipahlberg/camo"
@@ -15,7 +15,7 @@ description = "Generate TypeScript bindings for Rust types"
 doctest = false
 
 [dependencies]
-camo-core = { path = "../camo-core", version = "^0.2.0" }
+camo-core = { path = "../camo-core", version = "^0.3.0" }
 
 [dev-dependencies]
 camo = { path = "../camo", features = ["derive"] }
