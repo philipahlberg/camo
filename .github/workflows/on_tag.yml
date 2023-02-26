@@ -1,0 +1,36 @@
+name: tag
+
+on:
+  push:
+    tags:
+    - "v[0-9]+.[0-9]+.[0-9]+"
+
+jobs:
+  parse:
+    outputs:
+      version: ${{ env.VERSION }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Parse version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "VERSION: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+  release:
+    runs-on: ubuntu-22.04
+    needs:
+      - parse
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
+      - name: Create GitHub release
+        id: release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.parse.outputs.version }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
