@@ -1,4 +1,4 @@
-use camo::core::{Camo as _, Container, ContainerAttributes, Item, Struct, Visibility, GenericParameter, StructVariant, NamedField, Type, TypePath, PathSegment, TypeReference, Lifetime};
+use camo::core::{Camo as _, Container, ContainerAttributes, Item, Struct, Visibility, GenericParameter, StructContent, NamedField, Type, TypePath, PathSegment, ReferenceType, Lifetime};
 use camo_derive::Camo;
 
 #[derive(Camo)]
@@ -22,7 +22,7 @@ fn main() {
                     GenericParameter::Lifetime("a"),
                     GenericParameter::Type("T"),
                 ]),
-                content: StructVariant::NamedFields(
+                content: StructContent::NamedFields(
                     Vec::from([
                         NamedField {
                             name: "foo",
@@ -33,7 +33,7 @@ fn main() {
                         },
                         NamedField {
                             name: "bar",
-                            ty: Type::Reference(TypeReference {
+                            ty: Type::Reference(ReferenceType {
                                 lifetime: Lifetime {
                                     name: String::from("a"),
                                 },

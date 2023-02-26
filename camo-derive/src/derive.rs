@@ -3,8 +3,8 @@ use quote::quote;
 use syn::spanned::Spanned;
 use syn::{
     AttrStyle, Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, GenericArgument,
-    GenericParam, Generics, Meta, MetaList, PathArguments, PathSegment, TypePath, Variant,
-    Visibility,
+    GenericParam, Generics, Meta, MetaList, PathArguments, PathSegment, TypePath, TypeReference,
+    Variant, Visibility,
 };
 
 use crate::ast;
@@ -322,7 +322,7 @@ impl ast::Struct {
                 .into_iter()
                 .map(ast::GenericParameter::from_param)
                 .collect::<Result<_, _>>()?,
-            content: ast::StructVariant::from_fields(data.fields)?,
+            content: ast::StructContent::from_fields(data.fields)?,
         })
     }
 }
@@ -348,7 +348,7 @@ impl ast::GenericParameter {
     }
 }
 
-impl ast::StructVariant {
+impl ast::StructContent {
     fn from_fields(fields: Fields) -> Result<Self, Error> {
         match fields {
             Fields::Named(fields) => {
@@ -362,7 +362,7 @@ impl ast::StructVariant {
                         })
                     })
                     .collect();
-                Ok(ast::StructVariant::NamedFields(fields?))
+                Ok(ast::StructContent::NamedFields(fields?))
             }
             Fields::Unnamed(fields) => {
                 if fields.unnamed.len() > 1 {
@@ -373,7 +373,7 @@ impl ast::StructVariant {
                 }
                 let span = fields.span();
                 if let Some(field) = fields.unnamed.into_iter().next() {
-                    Ok(ast::StructVariant::UnnamedField(ast::UnnamedField {
+                    Ok(ast::StructContent::UnnamedField(ast::UnnamedField {
                         ty: ast::Type::from_ty(field.ty)?,
                     }))
                 } else {
@@ -509,8 +509,12 @@ impl ast::VariantContent {
 impl ast::Type {
     fn from_ty(ty: syn::Type) -> Result<Self, Error> {
         match ty {
-            syn::Type::Slice(ty) => Ok(ast::Type::Slice(Box::new(ast::Type::from_ty(*ty.elem)?))),
-            syn::Type::Array(ty) => Ok(ast::Type::Array(Box::new(ast::Type::from_ty(*ty.elem)?))),
+            syn::Type::Slice(ty) => Ok(ast::Type::Slice(ast::SliceType::from(ast::Type::from_ty(
+                *ty.elem,
+            )?))),
+            syn::Type::Array(ty) => Ok(ast::Type::Array(ast::ArrayType::from(ast::Type::from_ty(
+                *ty.elem,
+            )?))),
             syn::Type::BareFn(ty) => Err(Error {
                 kind: ErrorKind::FunctionTypes,
                 span: ty.span(),
@@ -522,12 +526,9 @@ impl ast::Type {
             }),
             syn::Type::Paren(ty) => ast::Type::from_ty(*ty.elem),
             syn::Type::Path(ty) => Ok(ast::Type::Path(ast::TypePath::from_type_path(ty)?)),
-            syn::Type::Reference(ty) => Ok(ast::Type::Reference(ast::TypeReference {
-                lifetime: ast::Lifetime {
-                    name: ty.lifetime.expect("missing lifetime").ident.to_string(),
-                },
-                ty: Box::new(ast::Type::from_ty(*ty.elem)?),
-            })),
+            syn::Type::Reference(ty) => Ok(ast::Type::Reference(
+                ast::ReferenceType::from_type_reference(ty)?,
+            )),
             syn::Type::Infer(_)
             | syn::Type::Never(_)
             | syn::Type::ImplTrait(_)
@@ -546,7 +547,16 @@ impl ast::Type {
     }
 }
 
-impl ast::TypeReference {}
+impl ast::ReferenceType {
+    fn from_type_reference(ty: TypeReference) -> Result<Self, Error> {
+        Ok(Self {
+            lifetime: ast::Lifetime {
+                name: ty.lifetime.expect("missing lifetime").ident.to_string(),
+            },
+            ty: Box::new(ast::Type::from_ty(*ty.elem)?),
+        })
+    }
+}
 
 impl ast::TypePath {
     fn from_type_path(ty: TypePath) -> Result<Self, Error> {

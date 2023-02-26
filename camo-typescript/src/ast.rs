@@ -5,23 +5,9 @@ use std::{convert::TryFrom, fmt};
 #[derive(Clone, Debug, PartialEq)]
 pub enum Definition {
     /// An interface definition.
-    ///
-    /// Example:
-    ///
-    /// ```ts
-    /// interface Foo {
-    ///     value: number;
-    /// }
-    /// ```
     Interface(Interface),
     /// A type definition.
-    ///
-    /// Example:
-    ///
-    /// ```ts
-    /// type Foo = { value: number };
-    /// ```
-    Type(TypeDefinition),
+    Alias(TypeAlias),
 }
 
 impl From<Interface> for Definition {
@@ -30,21 +16,9 @@ impl From<Interface> for Definition {
     }
 }
 
-impl From<TypeDefinition> for Definition {
-    fn from(value: TypeDefinition) -> Self {
-        Definition::Type(value)
-    }
-}
-
-impl From<AliasType> for Definition {
-    fn from(value: AliasType) -> Self {
-        Definition::Type(TypeDefinition::Alias(value))
-    }
-}
-
-impl From<UnionType> for Definition {
-    fn from(value: UnionType) -> Self {
-        Definition::Type(TypeDefinition::Union(value))
+impl From<TypeAlias> for Definition {
+    fn from(value: TypeAlias) -> Self {
+        Definition::Alias(value)
     }
 }
 
@@ -123,7 +97,7 @@ impl From<camo::Container> for Definition {
 
         match container.item {
             camo::Item::Struct(s) => match s.content {
-                camo::StructVariant::NamedFields(fields) => Definition::Interface(Interface {
+                camo::StructContent::NamedFields(fields) => Definition::Interface(Interface {
                     export: s.visibility.is_pub(),
                     name: rename.rename_type(s.name),
                     parameters: s
@@ -143,8 +117,8 @@ impl From<camo::Container> for Definition {
                         })
                         .collect(),
                 }),
-                camo::StructVariant::UnnamedField(field) => {
-                    Definition::Type(TypeDefinition::Alias(AliasType {
+                camo::StructContent::UnnamedField(field) => {
+                    Definition::Alias(TypeAlias {
                         export: s.visibility.is_pub(),
                         name: rename.rename_type(s.name),
                         parameters: s
@@ -157,20 +131,18 @@ impl From<camo::Container> for Definition {
                             })
                             .collect(),
                         ty: Type::from(field.ty),
-                    }))
+                    })
                 }
             },
-            camo::Item::Enum(ty) => {
-                Definition::Type(TypeDefinition::Union(if let Some(tag) = tag_rule {
-                    if let Some(content) = content_rule {
-                        UnionType::adjacently_tagged(rename, rename_all, tag, content, ty)
-                    } else {
-                        UnionType::internally_tagged(rename, rename_all, tag, ty)
-                    }
+            camo::Item::Enum(ty) => Definition::Alias(if let Some(tag) = tag_rule {
+                if let Some(content) = content_rule {
+                    TypeAlias::adjacently_tagged(rename, rename_all, tag, content, ty)
                 } else {
-                    UnionType::externally_tagged(rename, rename_all, ty)
-                }))
-            }
+                    TypeAlias::internally_tagged(rename, rename_all, tag, ty)
+                }
+            } else {
+                TypeAlias::externally_tagged(rename, rename_all, ty)
+            }),
         }
     }
 }
@@ -179,15 +151,25 @@ impl fmt::Display for Definition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Definition::Interface(ty) => write!(f, "{}", ty),
-            Definition::Type(ty) => write!(f, "{}", ty),
+            Definition::Alias(ty) => write!(f, "{}", ty),
         }
     }
 }
 
-/// Represents a TypeScript `interface` declaration.
+/// A top-level `interface` definition.
+///
+/// Example:
+///
+/// ```ts
+/// interface Foo {
+///     value: number;
+/// }
+/// ```
+///
+/// See: <https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#interfaces>
 #[derive(Clone, Debug, PartialEq)]
 pub struct Interface {
-    // Whether the interface is marked with `export`.
+    /// Whether the interface is marked with `export`.
     pub export: bool,
     /// The name of the interface.
     pub name: String,
@@ -218,7 +200,7 @@ impl fmt::Display for Interface {
     }
 }
 
-/// A field in e.g. an `interface` or a record literal type.
+/// A field in e.g. an interface or an object type.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Field {
     /// The name of the field.
@@ -233,47 +215,29 @@ impl fmt::Display for Field {
     }
 }
 
+/// A top-level `type` definition.
+/// Example:
+///
+/// ```ts
+/// type Foo = { value: number };
+/// ```
+///
+/// See: <https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#type-aliases>
 #[derive(Clone, Debug, PartialEq)]
-pub enum TypeDefinition {
-    /// A type definition that aliases some type.
-    ///
-    /// Example:
-    /// ```ts
-    /// type UserId = string;
-    /// ```
-    Alias(AliasType),
-
-    /// A type definition consisting of multiple cases.
-    ///
-    /// Example:
-    /// ```ts
-    /// type Primitive =
-    ///     | number
-    ///     | boolean
-    ///     | symbol;
-    /// ```
-    Union(UnionType),
-}
-
-impl fmt::Display for TypeDefinition {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            TypeDefinition::Alias(ty) => write!(f, "{}", ty),
-            TypeDefinition::Union(ty) => write!(f, "{}", ty),
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct AliasType {
+pub struct TypeAlias {
+    /// Whether the type is marked with `export`.
     pub export: bool,
+    /// The name of the type definition.
     pub name: String,
+    /// The generic parameters of the type definition.
     pub parameters: Vec<&'static str>,
+    /// The content of the type definition.
     pub ty: Type,
 }
 
-impl AliasType {
-    pub fn new<T: Into<Type>>(name: &str, ty: T) -> Self {
+impl TypeAlias {
+    /// Create a new type alias for the type `T`.
+    pub fn alias<T: Into<Type>>(name: &str, ty: T) -> Self {
         Self {
             export: false,
             name: String::from(name),
@@ -282,45 +246,14 @@ impl AliasType {
         }
     }
 
+    /// Mark the type with `export`.
     pub fn exported(self) -> Self {
         Self {
             export: true,
             ..self
         }
     }
-}
 
-impl fmt::Display for AliasType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.export {
-            write!(f, "export ")?;
-        }
-        write!(f, "type {}", self.name)?;
-        if !self.parameters.is_empty() {
-            write!(f, "<")?;
-            for parameter in &self.parameters {
-                write!(f, "{}", parameter)?;
-            }
-            write!(f, ">")?;
-        }
-        writeln!(f, " = {};", self.ty)
-    }
-}
-
-/// A type with multiple cases.
-#[derive(Clone, Debug, PartialEq)]
-pub struct UnionType {
-    /// Whether the type is marked with `export`.
-    pub export: bool,
-    /// The name of the union type.
-    pub name: String,
-    /// The generic parameters of the union type.
-    pub parameters: Vec<&'static str>,
-    /// The variants of the union type.
-    pub variants: Vec<Variant>,
-}
-
-impl UnionType {
     fn externally_tagged(rename: Renamer, rename_all: Renamer, ty: camo::Enum) -> Self {
         Self {
             export: ty.visibility.is_pub(),
@@ -334,11 +267,7 @@ impl UnionType {
                     camo::GenericParameter::Type(ty) => Some(ty),
                 })
                 .collect(),
-            variants: ty
-                .variants
-                .into_iter()
-                .map(|variant| Variant::externally_tagged(rename_all, variant))
-                .collect(),
+            ty: Type::Union(UnionType::externally_tagged(rename_all, ty.variants)),
         }
     }
 
@@ -361,11 +290,12 @@ impl UnionType {
                     camo::GenericParameter::Type(ty) => Some(ty),
                 })
                 .collect(),
-            variants: ty
-                .variants
-                .into_iter()
-                .map(|variant| Variant::adjacently_tagged(rename_all, tag, content, variant))
-                .collect(),
+            ty: Type::Union(UnionType::adjacently_tagged(
+                rename_all,
+                tag,
+                content,
+                ty.variants,
+            )),
         }
     }
 
@@ -387,16 +317,12 @@ impl UnionType {
                     camo::GenericParameter::Type(ty) => Some(ty),
                 })
                 .collect(),
-            variants: ty
-                .variants
-                .into_iter()
-                .map(|variant| Variant::internally_tagged(rename_all, tag, variant))
-                .collect(),
+            ty: Type::Union(UnionType::internally_tagged(rename_all, tag, ty.variants)),
         }
     }
 }
 
-impl fmt::Display for UnionType {
+impl fmt::Display for TypeAlias {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.export {
             write!(f, "export ")?;
@@ -409,14 +335,79 @@ impl fmt::Display for UnionType {
             }
             write!(f, ">")?;
         }
-        write!(f, " =")?;
-        for variant in &self.variants {
-            write!(f, "\n\t| {}", variant)?;
+        if self.ty.is_union() {
+            writeln!(f, " ={};", self.ty)
+        } else {
+            writeln!(f, " = {};", self.ty)
         }
-        writeln!(f, ";")
     }
 }
 
+/// A type with multiple cases.
+///
+/// Example:
+/// ```ts
+/// type Primitive =
+///     | number
+///     | boolean
+///     | symbol;
+/// ```
+///
+/// See: <https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#union-types>
+#[derive(Clone, Debug, PartialEq)]
+pub struct UnionType {
+    /// The variants of the union type.
+    pub variants: Vec<Variant>,
+}
+
+impl UnionType {
+    fn externally_tagged(rename_all: Renamer, variants: Vec<camo::Variant>) -> Self {
+        Self {
+            variants: variants
+                .into_iter()
+                .map(|variant| Variant::externally_tagged(rename_all, variant))
+                .collect(),
+        }
+    }
+
+    fn adjacently_tagged(
+        rename_all: Renamer,
+        tag: &'static str,
+        content: &'static str,
+        variants: Vec<camo::Variant>,
+    ) -> Self {
+        Self {
+            variants: variants
+                .into_iter()
+                .map(|variant| Variant::adjacently_tagged(rename_all, tag, content, variant))
+                .collect(),
+        }
+    }
+
+    fn internally_tagged(
+        rename_all: Renamer,
+        tag: &'static str,
+        variants: Vec<camo::Variant>,
+    ) -> Self {
+        Self {
+            variants: variants
+                .into_iter()
+                .map(|variant| Variant::internally_tagged(rename_all, tag, variant))
+                .collect(),
+        }
+    }
+}
+
+impl fmt::Display for UnionType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for variant in &self.variants {
+            write!(f, "\n\t| {}", variant)?;
+        }
+        Ok(())
+    }
+}
+
+/// A variant of a union type.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Variant(pub Type);
 
@@ -572,12 +563,27 @@ impl fmt::Display for Variant {
 /// function type definition, or type alias.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Type {
+    /// A built-in type like `number` or `string`.
     Builtin(BuiltinType),
+    /// A path to some type.
+    /// Includes simple names like `MyType`.
     Path(TypePath),
+    /// An object type.
     Object(ObjectType),
+    /// A literal type.
     Literal(LiteralType),
-    Array(Box<Type>),
+    /// An array type.
+    Array(ArrayType),
+    /// A union type, combining multiple cases.
+    Union(UnionType),
+    /// An intersection type, combining two types.
     Intersection(IntersectionType),
+}
+
+impl Type {
+    fn is_union(&self) -> bool {
+        matches!(self, Self::Union(..))
+    }
 }
 
 impl From<BuiltinType> for Type {
@@ -601,6 +607,12 @@ impl From<ObjectType> for Type {
 impl From<LiteralType> for Type {
     fn from(value: LiteralType) -> Self {
         Self::Literal(value)
+    }
+}
+
+impl From<ArrayType> for Type {
+    fn from(value: ArrayType) -> Self {
+        Self::Array(value)
     }
 }
 
@@ -629,7 +641,7 @@ impl From<camo::Type> for Type {
                                         panic!("unexpected lifetime argument provided to Vec")
                                     }
                                 };
-                                return Type::Array(Box::new(Type::from(component_ty)));
+                                return Type::Array(ArrayType::from(Type::from(component_ty)));
                             }
                             _ => return Type::Path(TypePath::from(ty)),
                         }
@@ -647,8 +659,8 @@ impl From<camo::Type> for Type {
                 }
                 Type::from(*ty.ty)
             }
-            camo::Type::Slice(ty) => Type::Array(Box::new(Type::from(*ty))),
-            camo::Type::Array(ty) => Type::Array(Box::new(Type::from(*ty))),
+            camo::Type::Slice(ty) => Type::Array(ArrayType::from(ty)),
+            camo::Type::Array(ty) => Type::Array(ArrayType::from(ty)),
         }
     }
 }
@@ -659,8 +671,9 @@ impl fmt::Display for Type {
             Type::Builtin(ty) => write!(f, "{}", ty),
             Type::Path(ty) => write!(f, "{}", ty),
             Type::Object(ty) => write!(f, "{}", ty),
-            Type::Literal(ty) => write!(f, "\"{}\"", ty),
-            Type::Array(ty) => write!(f, "{}[]", ty),
+            Type::Literal(ty) => write!(f, "{}", ty),
+            Type::Array(ty) => write!(f, "{}", ty),
+            Type::Union(ty) => write!(f, "{}", ty),
             Type::Intersection(ty) => write!(f, "{}", ty),
         }
     }
@@ -813,6 +826,8 @@ impl fmt::Display for PathSegment {
 }
 
 /// An object type.
+///
+/// See: <https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#object-types>
 #[derive(Clone, Debug, PartialEq)]
 pub struct ObjectType {
     /// The fields of the object type.
@@ -830,6 +845,13 @@ impl fmt::Display for ObjectType {
 }
 
 /// A literal type.
+///
+/// Example:
+/// ```ts
+/// type Tag = "Tag";
+/// ```
+///
+/// See: <https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#literal-types>
 #[derive(Clone, Debug, PartialEq)]
 pub enum LiteralType {
     /// A string literal type.
@@ -839,14 +861,58 @@ pub enum LiteralType {
 impl fmt::Display for LiteralType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            LiteralType::String(s) => write!(f, "{}", s),
+            LiteralType::String(s) => write!(f, "\"{}\"", s),
         }
     }
 }
 
+/// An array type expression.
+///
+/// Example:
+/// ```ts
+/// type Numbers = number[];
+/// ```
+#[derive(Clone, Debug, PartialEq)]
+pub struct ArrayType(pub Box<Type>);
+
+impl From<Type> for ArrayType {
+    fn from(value: Type) -> Self {
+        Self(Box::new(value))
+    }
+}
+
+impl From<camo::SliceType> for ArrayType {
+    fn from(value: camo::SliceType) -> Self {
+        Self(Box::new(Type::from(*value.0)))
+    }
+}
+
+impl From<camo::ArrayType> for ArrayType {
+    fn from(value: camo::ArrayType) -> Self {
+        Self(Box::new(Type::from(*value.0)))
+    }
+}
+
+impl fmt::Display for ArrayType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}[]", self.0)
+    }
+}
+
+/// An intersection type.
+///
+/// Example:
+/// ```ts
+/// type T = { name: string } & { value: number };
+/// //        -------------   ^  ----------------
+/// ```
+///
+/// See: <https://www.typescriptlang.org/docs/handbook/2/objects.html#intersection-types>
 #[derive(Clone, Debug, PartialEq)]
 pub struct IntersectionType {
+    /// The left-hand side of the intersection.
     pub left: Box<Type>,
+    /// The right-hand side of the intersection.
     pub right: Box<Type>,
 }
 

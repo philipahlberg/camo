@@ -145,7 +145,7 @@ pub struct Struct {
     pub visibility: Visibility,
     pub name: String,
     pub parameters: Vec<GenericParameter>,
-    pub content: StructVariant,
+    pub content: StructContent,
 }
 
 impl Struct {
@@ -192,31 +192,31 @@ impl GenericParameter {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum StructVariant {
+pub enum StructContent {
     NamedFields(Vec<NamedField>),
     UnnamedField(UnnamedField),
 }
 
-impl StructVariant {
+impl StructContent {
     pub fn into_token_stream(self) -> TokenStream {
         match self {
-            StructVariant::NamedFields(fields) => {
+            StructContent::NamedFields(fields) => {
                 let fields: Vec<_> = fields
                     .into_iter()
                     .map(|field| field.into_token_stream())
                     .collect();
                 quote! {
-                    ::camo::core::StructVariant::NamedFields(
+                    ::camo::core::StructContent::NamedFields(
                         Vec::from([
                             #(#fields),*
                         ])
                     )
                 }
             }
-            StructVariant::UnnamedField(field) => {
+            StructContent::UnnamedField(field) => {
                 let field = field.into_token_stream();
                 quote! {
-                    ::camo::core::StructVariant::UnnamedField(#field)
+                    ::camo::core::StructContent::UnnamedField(#field)
                 }
             }
         }
@@ -379,9 +379,9 @@ impl VariantContent {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Path(TypePath),
-    Reference(TypeReference),
-    Slice(Box<Type>),
-    Array(Box<Type>),
+    Reference(ReferenceType),
+    Slice(SliceType),
+    Array(ArrayType),
 }
 
 impl Type {
@@ -402,13 +402,13 @@ impl Type {
             Type::Slice(ty) => {
                 let content = ty.into_token_stream();
                 quote! {
-                    ::camo::core::Type::Slice(Box::new(#content))
+                    ::camo::core::Type::Slice(#content)
                 }
             }
             Type::Array(ty) => {
                 let content = ty.into_token_stream();
                 quote! {
-                    ::camo::core::Type::Array(Box::new(#content))
+                    ::camo::core::Type::Array(#content)
                 }
             }
         }
@@ -416,17 +416,17 @@ impl Type {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TypeReference {
+pub struct ReferenceType {
     pub lifetime: Lifetime,
     pub ty: Box<Type>,
 }
 
-impl TypeReference {
+impl ReferenceType {
     fn into_token_stream(self) -> TokenStream {
         let lifetime = self.lifetime.into_token_stream();
         let ty = (*self.ty).into_token_stream();
         quote! {
-            ::camo::core::TypeReference {
+            ::camo::core::ReferenceType {
                 lifetime: #lifetime,
                 ty: Box::new(#ty),
             }
@@ -516,5 +516,37 @@ impl GenericArgument {
                 quote!(::camo::core::GenericArgument::Lifetime(String::from(#lt)))
             }
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SliceType(pub Box<Type>);
+
+impl From<Type> for SliceType {
+    fn from(value: Type) -> Self {
+        Self(Box::new(value))
+    }
+}
+
+impl SliceType {
+    fn into_token_stream(self) -> TokenStream {
+        let ty = self.0.into_token_stream();
+        quote!(::camo::core::SliceType(Box::new(#ty)))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ArrayType(pub Box<Type>);
+
+impl From<Type> for ArrayType {
+    fn from(value: Type) -> Self {
+        Self(Box::new(value))
+    }
+}
+
+impl ArrayType {
+    fn into_token_stream(self) -> TokenStream {
+        let ty = self.0.into_token_stream();
+        quote!(::camo::core::ArrayType(Box::new(#ty)))
     }
 }

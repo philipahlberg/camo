@@ -2,8 +2,8 @@
 
 use camo::{core::Camo as _, derive::Camo};
 use camo_typescript::{
-    AliasType, BuiltinType, Definition, Field, Interface, IntersectionType, LiteralType,
-    ObjectType, PathSegment, Type, TypeDefinition, TypePath, UnionType, Variant,
+    ArrayType, BuiltinType, Definition, Field, Interface, IntersectionType, LiteralType,
+    ObjectType, PathSegment, Type, TypeAlias, TypePath, UnionType, Variant,
 };
 use serde::{Deserialize, Serialize};
 
@@ -172,7 +172,7 @@ fn supports_vec() {
             parameters: Vec::new(),
             fields: vec![Field {
                 name: String::from("foo"),
-                ty: Type::Array(Box::new(Type::Builtin(BuiltinType::Number),)),
+                ty: Type::Array(ArrayType::from(Type::Builtin(BuiltinType::Number))),
             }]
         })
     );
@@ -195,7 +195,7 @@ fn supports_slice() {
             parameters: Vec::new(),
             fields: vec![Field {
                 name: String::from("foo"),
-                ty: Type::Array(Box::new(Type::Builtin(BuiltinType::Number),)),
+                ty: Type::Array(ArrayType::from(Type::Builtin(BuiltinType::Number))),
             }]
         })
     );
@@ -218,7 +218,7 @@ fn supports_array() {
             parameters: Vec::new(),
             fields: vec![Field {
                 name: String::from("foo"),
-                ty: Type::Array(Box::new(Type::Builtin(BuiltinType::Number),)),
+                ty: Type::Array(ArrayType::from(Type::Builtin(BuiltinType::Number))),
             }]
         })
     );
@@ -228,7 +228,7 @@ fn supports_array() {
 fn display_alias_type() {
     use unindent::Unindent;
 
-    let def = AliasType {
+    let def = TypeAlias {
         export: true,
         name: String::from("Foo"),
         parameters: Vec::from(["K"]),
@@ -305,20 +305,22 @@ fn display_interface() {
 fn display_enum() {
     use unindent::Unindent;
 
-    let def = UnionType {
+    let def = TypeAlias {
         export: true,
         name: String::from("Foo"),
         parameters: Vec::from(["T"]),
-        variants: Vec::from([
-            Variant(Type::Builtin(BuiltinType::Number)),
-            Variant(Type::Builtin(BuiltinType::Boolean)),
-            Variant(Type::Path(TypePath {
-                segments: Vec::from([PathSegment {
-                    name: "T",
-                    arguments: Vec::new(),
-                }]),
-            })),
-        ]),
+        ty: Type::Union(UnionType {
+            variants: Vec::from([
+                Variant(Type::Builtin(BuiltinType::Number)),
+                Variant(Type::Builtin(BuiltinType::Boolean)),
+                Variant(Type::Path(TypePath {
+                    segments: Vec::from([PathSegment {
+                        name: "T",
+                        arguments: Vec::new(),
+                    }]),
+                })),
+            ]),
+        }),
     };
 
     let result = format!("{}", def);
@@ -359,7 +361,7 @@ fn serde_container_rename_struct() {
                 },
                 Field {
                     name: String::from("four_five_six"),
-                    ty: Type::Array(Box::new(Type::Builtin(BuiltinType::Number))),
+                    ty: Type::Array(ArrayType::from(Type::Builtin(BuiltinType::Number))),
                 },
             ]),
         })
@@ -377,30 +379,32 @@ fn serde_container_rename_enum() {
 
     assert_eq!(
         Definition::from(FooBar::camo()),
-        Definition::Type(TypeDefinition::Union(UnionType {
+        Definition::Alias(TypeAlias {
             export: false,
             name: String::from("fooBar"),
             parameters: Vec::new(),
-            variants: Vec::from([
-                Variant(Type::Object(ObjectType {
-                    fields: Vec::from([Field {
-                        name: String::from("VariantOne"),
-                        ty: Type::Builtin(BuiltinType::Number)
-                    }])
-                })),
-                Variant(Type::Object(ObjectType {
-                    fields: Vec::from([Field {
-                        name: String::from("VariantTwo"),
-                        ty: Type::Object(ObjectType {
-                            fields: Vec::from([Field {
-                                name: String::from("value"),
-                                ty: Type::Builtin(BuiltinType::String)
-                            }])
-                        })
-                    }])
-                })),
-            ]),
-        }))
+            ty: Type::Union(UnionType {
+                variants: Vec::from([
+                    Variant(Type::Object(ObjectType {
+                        fields: Vec::from([Field {
+                            name: String::from("VariantOne"),
+                            ty: Type::Builtin(BuiltinType::Number)
+                        }])
+                    })),
+                    Variant(Type::Object(ObjectType {
+                        fields: Vec::from([Field {
+                            name: String::from("VariantTwo"),
+                            ty: Type::Object(ObjectType {
+                                fields: Vec::from([Field {
+                                    name: String::from("value"),
+                                    ty: Type::Builtin(BuiltinType::String)
+                                }])
+                            })
+                        }])
+                    })),
+                ]),
+            })
+        })
     )
 }
 
@@ -428,7 +432,7 @@ fn serde_container_rename_all_struct() {
                 },
                 Field {
                     name: String::from("fourFiveSix"),
-                    ty: Type::Array(Box::new(Type::Builtin(BuiltinType::Number))),
+                    ty: Type::Array(ArrayType::from(Type::Builtin(BuiltinType::Number))),
                 },
             ]),
         })
@@ -446,30 +450,32 @@ fn serde_container_rename_all_enum() {
 
     assert_eq!(
         Definition::from(FooBar::camo()),
-        Definition::Type(TypeDefinition::Union(UnionType {
+        Definition::Alias(TypeAlias {
             export: false,
             name: String::from("FooBar"),
             parameters: Vec::new(),
-            variants: Vec::from([
-                Variant(Type::Object(ObjectType {
-                    fields: Vec::from([Field {
-                        name: String::from("variantOne"),
-                        ty: Type::Builtin(BuiltinType::Number)
-                    }])
-                })),
-                Variant(Type::Object(ObjectType {
-                    fields: Vec::from([Field {
-                        name: String::from("variantTwo"),
-                        ty: Type::Object(ObjectType {
-                            fields: Vec::from([Field {
-                                name: String::from("value"),
-                                ty: Type::Builtin(BuiltinType::String)
-                            }])
-                        })
-                    }])
-                })),
-            ]),
-        }))
+            ty: Type::Union(UnionType {
+                variants: Vec::from([
+                    Variant(Type::Object(ObjectType {
+                        fields: Vec::from([Field {
+                            name: String::from("variantOne"),
+                            ty: Type::Builtin(BuiltinType::Number)
+                        }])
+                    })),
+                    Variant(Type::Object(ObjectType {
+                        fields: Vec::from([Field {
+                            name: String::from("variantTwo"),
+                            ty: Type::Object(ObjectType {
+                                fields: Vec::from([Field {
+                                    name: String::from("value"),
+                                    ty: Type::Builtin(BuiltinType::String)
+                                }])
+                            })
+                        }])
+                    })),
+                ]),
+            })
+        })
     )
 }
 
@@ -487,30 +493,32 @@ fn serde_variant_rename() {
 
     assert_eq!(
         Definition::from(FooBar::camo()),
-        Definition::Type(TypeDefinition::Union(UnionType {
+        Definition::Alias(TypeAlias {
             export: false,
             name: String::from("FooBar"),
             parameters: Vec::new(),
-            variants: Vec::from([
-                Variant(Type::Object(ObjectType {
-                    fields: Vec::from([Field {
-                        name: String::from("VARIANTONE"),
-                        ty: Type::Builtin(BuiltinType::Number)
-                    }])
-                })),
-                Variant(Type::Object(ObjectType {
-                    fields: Vec::from([Field {
-                        name: String::from("variantTwo"),
-                        ty: Type::Object(ObjectType {
-                            fields: Vec::from([Field {
-                                name: String::from("value"),
-                                ty: Type::Builtin(BuiltinType::String)
-                            }])
-                        })
-                    }])
-                })),
-            ]),
-        }))
+            ty: Type::Union(UnionType {
+                variants: Vec::from([
+                    Variant(Type::Object(ObjectType {
+                        fields: Vec::from([Field {
+                            name: String::from("VARIANTONE"),
+                            ty: Type::Builtin(BuiltinType::Number)
+                        }])
+                    })),
+                    Variant(Type::Object(ObjectType {
+                        fields: Vec::from([Field {
+                            name: String::from("variantTwo"),
+                            ty: Type::Object(ObjectType {
+                                fields: Vec::from([Field {
+                                    name: String::from("value"),
+                                    ty: Type::Builtin(BuiltinType::String)
+                                }])
+                            })
+                        }])
+                    })),
+                ]),
+            })
+        })
     )
 }
 
@@ -528,30 +536,32 @@ fn serde_variant_rename_all() {
 
     assert_eq!(
         Definition::from(FooBar::camo()),
-        Definition::Type(TypeDefinition::Union(UnionType {
+        Definition::Alias(TypeAlias {
             export: false,
             name: String::from("FooBar"),
             parameters: Vec::new(),
-            variants: Vec::from([
-                Variant(Type::Object(ObjectType {
-                    fields: Vec::from([Field {
-                        name: String::from("variantOne"),
-                        ty: Type::Builtin(BuiltinType::Number)
-                    }])
-                })),
-                Variant(Type::Object(ObjectType {
-                    fields: Vec::from([Field {
-                        name: String::from("variantTwo"),
-                        ty: Type::Object(ObjectType {
-                            fields: Vec::from([Field {
-                                name: String::from("VALUE"),
-                                ty: Type::Builtin(BuiltinType::String)
-                            }])
-                        })
-                    }])
-                })),
-            ]),
-        }))
+            ty: Type::Union(UnionType {
+                variants: Vec::from([
+                    Variant(Type::Object(ObjectType {
+                        fields: Vec::from([Field {
+                            name: String::from("variantOne"),
+                            ty: Type::Builtin(BuiltinType::Number)
+                        }])
+                    })),
+                    Variant(Type::Object(ObjectType {
+                        fields: Vec::from([Field {
+                            name: String::from("variantTwo"),
+                            ty: Type::Object(ObjectType {
+                                fields: Vec::from([Field {
+                                    name: String::from("VALUE"),
+                                    ty: Type::Builtin(BuiltinType::String)
+                                }])
+                            })
+                        }])
+                    })),
+                ]),
+            })
+        })
     )
 }
 
@@ -572,53 +582,57 @@ fn enum_externally_tagged() {
 
     assert_eq!(
         foo,
-        Definition::Type(camo_typescript::TypeDefinition::Union(UnionType {
+        Definition::Alias(TypeAlias {
             export: false,
             name: String::from("Foo"),
             parameters: Vec::from(["T"]),
-            variants: Vec::from([
-                Variant(Type::Literal(LiteralType::String(String::from("Zero")))),
-                Variant(Type::Object(ObjectType {
-                    fields: Vec::from([Field {
-                        name: String::from("One"),
-                        ty: Type::Builtin(BuiltinType::Boolean),
-                    }])
-                })),
-                Variant(Type::Object(ObjectType {
-                    fields: Vec::from([Field {
-                        name: String::from("Two"),
-                        ty: Type::Path(TypePath {
-                            segments: Vec::from([PathSegment {
-                                name: "T",
-                                arguments: Vec::new()
-                            }])
-                        }),
-                    }])
-                })),
-                Variant(Type::Object(ObjectType {
-                    fields: Vec::from([Field {
-                        name: String::from("Three"),
-                        ty: Type::Path(TypePath {
-                            segments: Vec::from([PathSegment {
-                                name: "V",
-                                arguments: Vec::new()
-                            }])
-                        }),
-                    }])
-                })),
-                Variant(Type::Object(ObjectType {
-                    fields: Vec::from([Field {
-                        name: String::from("Four"),
-                        ty: Type::Object(ObjectType {
-                            fields: Vec::from([Field {
-                                name: String::from("values"),
-                                ty: Type::Array(Box::new(Type::Builtin(BuiltinType::Number),))
-                            }])
-                        }),
-                    }])
-                })),
-            ]),
-        })),
+            ty: Type::Union(UnionType {
+                variants: Vec::from([
+                    Variant(Type::Literal(LiteralType::String(String::from("Zero")))),
+                    Variant(Type::Object(ObjectType {
+                        fields: Vec::from([Field {
+                            name: String::from("One"),
+                            ty: Type::Builtin(BuiltinType::Boolean),
+                        }])
+                    })),
+                    Variant(Type::Object(ObjectType {
+                        fields: Vec::from([Field {
+                            name: String::from("Two"),
+                            ty: Type::Path(TypePath {
+                                segments: Vec::from([PathSegment {
+                                    name: "T",
+                                    arguments: Vec::new()
+                                }])
+                            }),
+                        }])
+                    })),
+                    Variant(Type::Object(ObjectType {
+                        fields: Vec::from([Field {
+                            name: String::from("Three"),
+                            ty: Type::Path(TypePath {
+                                segments: Vec::from([PathSegment {
+                                    name: "V",
+                                    arguments: Vec::new()
+                                }])
+                            }),
+                        }])
+                    })),
+                    Variant(Type::Object(ObjectType {
+                        fields: Vec::from([Field {
+                            name: String::from("Four"),
+                            ty: Type::Object(ObjectType {
+                                fields: Vec::from([Field {
+                                    name: String::from("values"),
+                                    ty: Type::Array(ArrayType::from(Type::Builtin(
+                                        BuiltinType::Number
+                                    )))
+                                }])
+                            }),
+                        }])
+                    })),
+                ]),
+            })
+        })
     );
 }
 
@@ -638,46 +652,48 @@ fn enum_internally_tagged() {
 
     assert_eq!(
         def,
-        Definition::Type(TypeDefinition::Union(UnionType {
+        Definition::Alias(TypeAlias {
             export: false,
             name: String::from("Foo"),
             parameters: Vec::new(),
-            variants: Vec::from([
-                Variant(Type::Intersection(IntersectionType {
-                    left: Box::new(Type::Object(ObjectType {
-                        fields: Vec::from([Field {
-                            name: String::from("tag"),
-                            ty: Type::Literal(LiteralType::String(String::from("VariantOne")))
-                        },])
+            ty: Type::Union(UnionType {
+                variants: Vec::from([
+                    Variant(Type::Intersection(IntersectionType {
+                        left: Box::new(Type::Object(ObjectType {
+                            fields: Vec::from([Field {
+                                name: String::from("tag"),
+                                ty: Type::Literal(LiteralType::String(String::from("VariantOne")))
+                            },])
+                        })),
+                        right: Box::new(Type::Path(TypePath {
+                            segments: Vec::from([PathSegment {
+                                name: "Bar",
+                                arguments: Vec::new()
+                            },])
+                        }))
                     })),
-                    right: Box::new(Type::Path(TypePath {
-                        segments: Vec::from([PathSegment {
-                            name: "Bar",
-                            arguments: Vec::new()
-                        },])
-                    }))
-                })),
-                Variant(Type::Intersection(IntersectionType {
-                    left: Box::new(Type::Object(ObjectType {
-                        fields: Vec::from([Field {
-                            name: String::from("tag"),
-                            ty: Type::Literal(LiteralType::String(String::from("VariantTwo")))
-                        },])
+                    Variant(Type::Intersection(IntersectionType {
+                        left: Box::new(Type::Object(ObjectType {
+                            fields: Vec::from([Field {
+                                name: String::from("tag"),
+                                ty: Type::Literal(LiteralType::String(String::from("VariantTwo")))
+                            },])
+                        })),
+                        right: Box::new(Type::Object(ObjectType {
+                            fields: Vec::from([Field {
+                                name: String::from("bar"),
+                                ty: Type::Path(TypePath {
+                                    segments: Vec::from([PathSegment {
+                                        name: "Bar",
+                                        arguments: Vec::new()
+                                    },])
+                                })
+                            }])
+                        }))
                     })),
-                    right: Box::new(Type::Object(ObjectType {
-                        fields: Vec::from([Field {
-                            name: String::from("bar"),
-                            ty: Type::Path(TypePath {
-                                segments: Vec::from([PathSegment {
-                                    name: "Bar",
-                                    arguments: Vec::new()
-                                },])
-                            })
-                        }])
-                    }))
-                })),
-            ])
-        }))
+                ])
+            })
+        })
     );
 }
 
@@ -694,41 +710,43 @@ fn enum_adjacently_tagged() {
 
     assert_eq!(
         def,
-        Definition::Type(TypeDefinition::Union(UnionType {
+        Definition::Alias(TypeAlias {
             export: false,
             name: String::from("Foo"),
             parameters: Vec::new(),
-            variants: Vec::from([
-                Variant(Type::Object(ObjectType {
-                    fields: Vec::from([
-                        Field {
-                            name: String::from("tag"),
-                            ty: Type::Literal(LiteralType::String(String::from("VariantOne")))
-                        },
-                        Field {
-                            name: String::from("content"),
-                            ty: Type::Builtin(BuiltinType::Number)
-                        },
-                    ])
-                })),
-                Variant(Type::Object(ObjectType {
-                    fields: Vec::from([
-                        Field {
-                            name: String::from("tag"),
-                            ty: Type::Literal(LiteralType::String(String::from("VariantTwo")))
-                        },
-                        Field {
-                            name: String::from("content"),
-                            ty: Type::Object(ObjectType {
-                                fields: Vec::from([Field {
-                                    name: String::from("valid"),
-                                    ty: Type::Builtin(BuiltinType::Boolean),
-                                }])
-                            })
-                        },
-                    ])
-                })),
-            ])
-        }))
+            ty: Type::Union(UnionType {
+                variants: Vec::from([
+                    Variant(Type::Object(ObjectType {
+                        fields: Vec::from([
+                            Field {
+                                name: String::from("tag"),
+                                ty: Type::Literal(LiteralType::String(String::from("VariantOne")))
+                            },
+                            Field {
+                                name: String::from("content"),
+                                ty: Type::Builtin(BuiltinType::Number)
+                            },
+                        ])
+                    })),
+                    Variant(Type::Object(ObjectType {
+                        fields: Vec::from([
+                            Field {
+                                name: String::from("tag"),
+                                ty: Type::Literal(LiteralType::String(String::from("VariantTwo")))
+                            },
+                            Field {
+                                name: String::from("content"),
+                                ty: Type::Object(ObjectType {
+                                    fields: Vec::from([Field {
+                                        name: String::from("valid"),
+                                        ty: Type::Builtin(BuiltinType::Boolean),
+                                    }])
+                                })
+                            },
+                        ])
+                    })),
+                ])
+            })
+        })
     );
 }

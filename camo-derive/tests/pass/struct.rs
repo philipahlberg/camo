@@ -1,4 +1,4 @@
-use camo::core::{Camo as _, Container, ContainerAttributes, Item, Struct, Visibility, StructVariant, NamedField, Type, PathSegment, TypePath};
+use camo::core::{Camo as _, Container, ContainerAttributes, Item, Struct, Visibility, StructContent, NamedField, Type, PathSegment, TypePath};
 use camo_derive::Camo;
 
 #[derive(Camo)]
@@ -19,7 +19,7 @@ fn main() {
                 visibility: Visibility::None,
                 name: "Foo",
                 parameters: Vec::new(),
-                content: StructVariant::NamedFields(
+                content: StructContent::NamedFields(
                     Vec::from([
                         NamedField {
                             name: "foo",

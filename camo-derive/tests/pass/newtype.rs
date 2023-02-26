@@ -1,4 +1,4 @@
-use camo::core::{Camo as _, Container, ContainerAttributes, Item, Struct, Visibility, StructVariant, UnnamedField, Type, PathSegment, TypePath};
+use camo::core::{Camo as _, Container, ContainerAttributes, Item, Struct, Visibility, StructContent, UnnamedField, Type, PathSegment, TypePath};
 use camo_derive::Camo;
 
 #[derive(Camo)]
@@ -15,7 +15,7 @@ fn main() {
                 visibility: Visibility::None,
                 name: "Foo",
                 parameters: Vec::new(),
-                content: StructVariant::UnnamedField(UnnamedField {
+                content: StructContent::UnnamedField(UnnamedField {
                     ty: Type::Path(TypePath::from([PathSegment {
                         name: "i32",
                         arguments: Vec::new(),

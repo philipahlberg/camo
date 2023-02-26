@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 //! A crate for representing and creating Rust type definitions as values,
 //! i. e. a subset of the Rust abstract syntax.
 

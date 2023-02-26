@@ -1,4 +1,4 @@
-use camo::core::{Camo as _, Container, ContainerAttributes, RenameRule, Item, Struct, Enum, Visibility, StructVariant, NamedField, Variant, VariantAttributes, VariantContent, Type, PathSegment, TypePath};
+use camo::core::{Camo as _, Container, ContainerAttributes, RenameRule, Item, Struct, Enum, Visibility, StructContent, NamedField, Variant, VariantAttributes, VariantContent, Type, PathSegment, TypePath};
 use camo_derive::Camo;
 use serde::Serialize;
 
@@ -37,7 +37,7 @@ fn main() {
                 visibility: Visibility::None,
                 name: "Foo",
                 parameters: Vec::new(),
-                content: StructVariant::NamedFields(
+                content: StructContent::NamedFields(
                     Vec::from([
                         NamedField {
                             name: "foo",

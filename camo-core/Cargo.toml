@@ -11,9 +11,6 @@ license = "MIT"
 categories = ["development-tools", "web-programming"]
 description = "Core of camo, the foreign language interface generation library. Not intended to be used directly."
 
-[lib]
-doctest = false
-
 [dependencies]
 
 [dev-dependencies]
