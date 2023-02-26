@@ -12,9 +12,9 @@ categories = ["development-tools", "web-programming"]
 description = "Foreign language interface generation"
 
 [dependencies]
-camo-core = { path = "../camo-core" }
-camo-derive = { path = "../camo-derive", optional = true }
-camo-typescript = { path = "../camo-typescript", optional = true }
+camo-core = { path = "../camo-core", version = "0.1.1" }
+camo-derive = { path = "../camo-derive", version = "0.1.1", optional = true }
+camo-typescript = { path = "../camo-typescript", version = "0.1.1", optional = true }
 
 [dev-dependencies]
 

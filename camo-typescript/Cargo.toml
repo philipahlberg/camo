@@ -15,7 +15,7 @@ description = "Generate TypeScript bindings for Rust types"
 doctest = false
 
 [dependencies]
-camo-core = { path = "../camo-core" }
+camo-core = { path = "../camo-core", version = "0.1.1" }
 
 [dev-dependencies]
 camo = { path = "../camo", features = ["derive"] }
