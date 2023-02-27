@@ -1,4 +1,5 @@
 #![warn(missing_docs)]
+#![allow(clippy::tabs_in_doc_comments)]
 
 //! A crate for representing and creating Rust type definitions as values,
 //! i. e. a subset of the Rust abstract syntax.
@@ -35,15 +36,26 @@
 //! };
 //!
 //! #[derive(Camo)]
+//! enum BindingType {
+//!     Paperback,
+//!     Hardcover,
+//! }
+//!
+//! #[derive(Camo)]
 //! struct Book {
 //!     title: String,
 //!     author: String,
 //!     page_count: usize,
 //!     chapters: Vec<String>,
+//!     binding: BindingType,
 //! }
+//!
 //!
 //! let book = Book::camo();
 //! println!("{:?}", book);
+//!
+//! let binding = BindingType::camo();
+//! println!("{:?}", binding);
 //! ```
 //!
 //! With the `typescript` feature enabled, create a TypeScript definition:
@@ -55,29 +67,48 @@
 //!     /* ... */
 //!     typescript::Definition,
 //! };
-//!
+//! #
+//! # #[derive(Camo)]
+//! # enum BindingType {
+//! #     Paperback,
+//! #     Hardcover,
+//! # }
+//! #
 //! # #[derive(Camo)]
 //! # struct Book {
 //! #     title: String,
 //! #     author: String,
 //! #     page_count: usize,
 //! #     chapters: Vec<String>,
+//! #     binding: BindingType,
 //! # }
-//! # 
+//! #
 //! # let book = Book::camo();
+//! # let binding = BindingType::camo();
 //! /* ... */
 //!
-//! let ty: Definition = book.into();
+//! let book: Definition = book.into();
 //! assert_eq!(
-//!     ty.to_string(),
+//!     book.to_string(),
 //!     unindent::unindent("
-//!         interface Book {
-//!         	title: string;
-//!         	author: string;
-//!         	page_count: number;
-//!         	chapters: string[];
-//!         }
-//!     ")
+//! 		interface Book {
+//! 			title: string;
+//! 			author: string;
+//! 			page_count: number;
+//! 			chapters: string[];
+//!				binding: BindingType;
+//! 		}
+//! 	")
+//! );
+//!
+//! let binding: Definition = binding.into();
+//! assert_eq!(
+//!     binding.to_string(),
+//!     unindent::unindent(r#"
+//! 		type BindingType =
+//! 			| "Paperback"
+//! 			| "Hardcover";
+//! 		"#)
 //! );
 //! ```
 //!
