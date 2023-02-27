@@ -643,6 +643,21 @@ impl From<camo::Type> for Type {
                                 };
                                 return Type::Array(ArrayType::from(Type::from(component_ty)));
                             }
+                            "Option" => {
+                                let component_ty = match segment.arguments.first().unwrap().clone()
+                                {
+                                    camo::GenericArgument::Type(ty) => ty,
+                                    camo::GenericArgument::Lifetime(_) => {
+                                        panic!("unexpected lifetime argument provided to Option")
+                                    }
+                                };
+                                return Type::Union(UnionType {
+                                    variants: Vec::from([
+                                        Variant(Type::from(component_ty)),
+                                        Variant(Type::Builtin(BuiltinType::Null)),
+                                    ]),
+                                });
+                            }
                             _ => return Type::Path(TypePath::from(ty)),
                         }
                     }
@@ -688,6 +703,8 @@ pub enum BuiltinType {
     Boolean,
     /// The `string` type.
     String,
+    /// The `null` type.
+    Null,
 }
 
 impl From<camo::BuiltinType> for BuiltinType {
@@ -719,6 +736,7 @@ impl fmt::Display for BuiltinType {
             BuiltinType::Number => write!(f, "number"),
             BuiltinType::Boolean => write!(f, "boolean"),
             BuiltinType::String => write!(f, "string"),
+            BuiltinType::Null => write!(f, "null"),
         }
     }
 }

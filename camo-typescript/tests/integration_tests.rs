@@ -225,7 +225,35 @@ fn supports_array() {
 }
 
 #[test]
-fn display_alias_type() {
+fn supports_option() {
+    #[derive(Camo)]
+    struct Foo {
+        foo: Option<String>,
+    }
+
+    let foo: Definition = Foo::camo().into();
+
+    assert_eq!(
+        foo,
+        Definition::Interface(Interface {
+            export: false,
+            name: String::from("Foo"),
+            parameters: Vec::new(),
+            fields: vec![Field {
+                name: String::from("foo"),
+                ty: Type::Union(UnionType {
+                    variants: Vec::from([
+                        Variant(Type::Builtin(BuiltinType::String)),
+                        Variant(Type::Builtin(BuiltinType::Null)),
+                    ])
+                }),
+            }]
+        })
+    );
+}
+
+#[test]
+fn display_type_alias() {
     use unindent::Unindent;
 
     let def = TypeAlias {
