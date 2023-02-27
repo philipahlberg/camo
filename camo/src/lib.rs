@@ -23,7 +23,8 @@
 //! cargo add camo --features typescript
 //! ```
 //!
-//! Add the `Camo` derive macro to your type:
+//! Add the `Camo` derive macro to your type, and use
+//! the generated `Camo::camo()` implementation:
 //!
 //! ```rust
 //! use camo::{
@@ -40,61 +41,64 @@
 //!     page_count: usize,
 //!     chapters: Vec<String>,
 //! }
-//! ```
 //!
-//! Use the generated `Camo::camo()` implementation:
-//!
-//! ```rust
-//! fn main() {
-//!     let book = Book::camo();
-//!     println!("{:?}", book);
-//! }
+//! let book = Book::camo();
+//! println!("{:?}", book);
 //! ```
 //!
 //! With the `typescript` feature enabled, create a TypeScript definition:
 //!
 //! ```rust
 //! use camo::{
+//!     # core::Camo as _,
+//!     # derive::Camo,
 //!     /* ... */
 //!     typescript::Definition,
 //! };
 //!
+//! # #[derive(Camo)]
+//! # struct Book {
+//! #     title: String,
+//! #     author: String,
+//! #     page_count: usize,
+//! #     chapters: Vec<String>,
+//! # }
+//! # 
+//! # let book = Book::camo();
 //! /* ... */
 //!
-//! fn main() {
-//!
-//!     /* ... */
-//!
-//!     let ty: Definition = book.into();
-//!
-//!     println!("{}", ty);
-//!     // interface Book {
-//!     //     title: string;
-//!     //     author: string;
-//!     //     page_count: number;
-//!     //     chapters: string[];
-//!     // }
-//! }
+//! let ty: Definition = book.into();
+//! assert_eq!(
+//!     ty.to_string(),
+//!     unindent::unindent("
+//!         interface Book {
+//!         	title: string;
+//!         	author: string;
+//!         	page_count: number;
+//!         	chapters: string[];
+//!         }
+//!     ")
+//! );
 //! ```
 //!
 //! See more examples [here][github-link-examples].
-
+//!
 //! ## Features
 //!
 //! | Feature      | Default | Description |
 //! | ------------ | ------- | ----------- |
 //! | `derive`     | Yes     | Enables the [`derive::Camo`] derive macro. |
 //! | `typescript` | No      | Enables the TypeScript backend, rooted in [`typescript::Definition`]. |
-//! 
-//! 
+//!
+//!
 //! [cratesio-link-camo]: https://crates.io/crates/camo
 //! [cratesio-link-camo-core]: https://crates.io/crates/camo-core
 //! [cratesio-link-camo-derive]: https://crates.io/crates/camo-derive
 //! [cratesio-link-camo-typescript]: https://crates.io/crates/camo-typescript
 //! [cratesio-badge-camo]: https://img.shields.io/crates/v/camo?label=docs&style=for-the-badge&logo=rust
-//! 
+//!
 //! [github-link-examples]: https://github.com/philipahlberg/camo/tree/main/examples
-//! 
+//!
 //! [`core::Container`]: https://docs.rs/camo/0/core/struct.Container.html
 //! [`core::Camo`]: https://docs.rs/camo/0/core/trait.Camo.html
 //! [`derive::Camo`]: https://docs.rs/camo/0/derive/macro.Camo.html
