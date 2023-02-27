@@ -28,12 +28,7 @@
 //! the generated `Camo::camo()` implementation:
 //!
 //! ```rust
-//! use camo::{
-//!     // The trait (so we can use `Book::camo()`)
-//!     core::Camo as _,
-//!     // The macro (so we can use `#[derive(Camo)]`)
-//!     derive::Camo
-//! };
+//! use camo::Camo;
 //!
 //! #[derive(Camo)]
 //! enum BindingType {
@@ -62,8 +57,7 @@
 //!
 //! ```rust
 //! use camo::{
-//!     # core::Camo as _,
-//!     # derive::Camo,
+//!     Camo,
 //!     /* ... */
 //!     typescript::Definition,
 //! };
@@ -138,10 +132,11 @@
 
 /// The data structures used to construct abstract syntax trees for types.
 pub use camo_core as core;
+pub use camo_core::Camo;
 
 /// The `Camo` derive macro, enabled by the `derive` feature.
 #[cfg(feature = "derive")]
-pub use camo_derive as derive;
+pub use camo_derive::Camo;
 
 /// The TypeScript backend, enabled by the `typescript` feature.
 #[cfg(feature = "typescript")]

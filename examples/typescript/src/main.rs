@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use camo::{core::Camo as _, derive::Camo, typescript::Definition};
+use camo::{typescript::Definition, Camo};
 use clap::Parser;
 use serde::Serialize;
 use std::fs::File;

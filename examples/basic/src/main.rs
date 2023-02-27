@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use camo::{core::Camo as _, derive::Camo};
+use camo::Camo;
 
 #[derive(Camo)]
 pub struct Book {
