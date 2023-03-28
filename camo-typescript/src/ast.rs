@@ -211,8 +211,22 @@ pub struct Field {
 
 impl fmt::Display for Field {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{name}: {ty};", name = self.name, ty = self.ty)
+        if is_valid_identifier(self.name.as_str()) {
+            write!(f, "{name}: {ty};", name = self.name, ty = self.ty)
+        } else {
+            write!(f, r#"'{name}': {ty};"#, name = self.name, ty = self.ty)
+        }
     }
+}
+
+fn is_valid_identifier(string: &str) -> bool {
+    let mut chars = string.chars();
+    if let Some(c) = chars.next() {
+        if !c.is_alphabetic() && c != '_' {
+            return false;
+        }
+    }
+    chars.all(|c| c.is_alphanumeric() || c == '_')
 }
 
 /// A top-level `type` definition.
