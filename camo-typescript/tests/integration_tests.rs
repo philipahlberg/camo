@@ -35,10 +35,10 @@ fn supports_booleans() {
         bar: bool,
     }
 
-    let foo: Definition = Foo::camo().into();
+    let def: Definition = Foo::camo().into();
 
     assert_eq!(
-        foo,
+        def,
         Definition::Interface(Interface {
             export: false,
             name: String::from("Foo"),
@@ -60,10 +60,10 @@ fn supports_numbers() {
         baz: usize,
     }
 
-    let foo: Definition = Foo::camo().into();
+    let def: Definition = Foo::camo().into();
 
     assert_eq!(
-        foo,
+        def,
         Definition::Interface(Interface {
             export: false,
             name: String::from("Foo"),
@@ -93,10 +93,10 @@ fn supports_chars() {
         foo: char,
     }
 
-    let foo: Definition = Foo::camo().into();
+    let def: Definition = Foo::camo().into();
 
     assert_eq!(
-        foo,
+        def,
         Definition::Interface(Interface {
             export: false,
             name: String::from("Foo"),
@@ -116,10 +116,10 @@ fn supports_string() {
         foo: String,
     }
 
-    let foo: Definition = Foo::camo().into();
+    let def: Definition = Foo::camo().into();
 
     assert_eq!(
-        foo,
+        def,
         Definition::Interface(Interface {
             export: false,
             name: String::from("Foo"),
@@ -139,10 +139,10 @@ fn supports_str() {
         foo: &'a str,
     }
 
-    let foo: Definition = Foo::camo().into();
+    let def: Definition = Foo::camo().into();
 
     assert_eq!(
-        foo,
+        def,
         Definition::Interface(Interface {
             export: false,
             name: String::from("Foo"),
@@ -162,10 +162,10 @@ fn supports_vec() {
         foo: Vec<u8>,
     }
 
-    let foo: Definition = Foo::camo().into();
+    let def: Definition = Foo::camo().into();
 
     assert_eq!(
-        foo,
+        def,
         Definition::Interface(Interface {
             export: false,
             name: String::from("Foo"),
@@ -185,10 +185,10 @@ fn supports_slice() {
         foo: &'static [u8],
     }
 
-    let foo: Definition = Foo::camo().into();
+    let def: Definition = Foo::camo().into();
 
     assert_eq!(
-        foo,
+        def,
         Definition::Interface(Interface {
             export: false,
             name: String::from("Foo"),
@@ -208,10 +208,10 @@ fn supports_array() {
         foo: [u8; 16],
     }
 
-    let foo: Definition = Foo::camo().into();
+    let def: Definition = Foo::camo().into();
 
     assert_eq!(
-        foo,
+        def,
         Definition::Interface(Interface {
             export: false,
             name: String::from("Foo"),
@@ -231,10 +231,10 @@ fn supports_option() {
         foo: Option<String>,
     }
 
-    let foo: Definition = Foo::camo().into();
+    let def: Definition = Foo::camo().into();
 
     assert_eq!(
-        foo,
+        def,
         Definition::Interface(Interface {
             export: false,
             name: String::from("Foo"),
@@ -606,10 +606,10 @@ fn enum_externally_tagged() {
         Four { values: Vec<i32> },
     }
 
-    let foo: Definition = Foo::<V>::camo().into();
+    let def: Definition = Foo::<V>::camo().into();
 
     assert_eq!(
-        foo,
+        def,
         Definition::Alias(TypeAlias {
             export: false,
             name: String::from("Foo"),
