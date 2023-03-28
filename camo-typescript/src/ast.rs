@@ -705,6 +705,8 @@ pub enum BuiltinType {
     String,
     /// The `null` type.
     Null,
+    /// The `never` type.
+    Never,
 }
 
 impl From<camo::BuiltinType> for BuiltinType {
@@ -737,6 +739,7 @@ impl fmt::Display for BuiltinType {
             BuiltinType::Boolean => write!(f, "boolean"),
             BuiltinType::String => write!(f, "string"),
             BuiltinType::Null => write!(f, "null"),
+            BuiltinType::Never => write!(f, "never"),
         }
     }
 }
