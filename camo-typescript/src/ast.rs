@@ -768,7 +768,7 @@ impl<const N: usize> From<[&'static str; N]> for TypePath {
         Self {
             segments: value
                 .map(|name| PathSegment {
-                    name,
+                    name: name.to_string(),
                     arguments: Vec::new(),
                 })
                 .to_vec(),
@@ -780,7 +780,7 @@ impl From<&'static str> for TypePath {
     fn from(value: &'static str) -> Self {
         Self {
             segments: Vec::from([PathSegment {
-                name: value,
+                name: value.to_string(),
                 arguments: Vec::new(),
             }]),
         }
@@ -804,7 +804,7 @@ impl fmt::Display for TypePath {
 #[derive(Clone, Debug, PartialEq)]
 pub struct PathSegment {
     /// The name of the segment.
-    pub name: &'static str,
+    pub name: String,
     /// The arguments provided to the segment.
     pub arguments: Vec<Type>,
 }
@@ -812,7 +812,7 @@ pub struct PathSegment {
 impl From<camo::PathSegment> for PathSegment {
     fn from(value: camo::PathSegment) -> Self {
         Self {
-            name: value.name,
+            name: value.name.to_string(),
             arguments: value
                 .arguments
                 .into_iter()

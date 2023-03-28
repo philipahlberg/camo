@@ -266,7 +266,7 @@ fn display_type_alias() {
                     name: String::from("k"),
                     ty: Type::Path(TypePath {
                         segments: Vec::from([PathSegment {
-                            name: "K",
+                            name: "K".to_string(),
                             arguments: Vec::new(),
                         }]),
                     }),
@@ -307,7 +307,7 @@ fn display_interface() {
                 name: String::from("bar"),
                 ty: Type::Path(TypePath {
                     segments: Vec::from([PathSegment {
-                        name: "K",
+                        name: "K".to_string(),
                         arguments: Vec::new(),
                     }]),
                 }),
@@ -343,7 +343,7 @@ fn display_enum() {
                 Variant(Type::Builtin(BuiltinType::Boolean)),
                 Variant(Type::Path(TypePath {
                     segments: Vec::from([PathSegment {
-                        name: "T",
+                        name: "T".to_string(),
                         arguments: Vec::new(),
                     }]),
                 })),
@@ -628,7 +628,7 @@ fn enum_externally_tagged() {
                             name: String::from("Two"),
                             ty: Type::Path(TypePath {
                                 segments: Vec::from([PathSegment {
-                                    name: "T",
+                                    name: "T".to_string(),
                                     arguments: Vec::new()
                                 }])
                             }),
@@ -639,7 +639,7 @@ fn enum_externally_tagged() {
                             name: String::from("Three"),
                             ty: Type::Path(TypePath {
                                 segments: Vec::from([PathSegment {
-                                    name: "V",
+                                    name: "V".to_string(),
                                     arguments: Vec::new()
                                 }])
                             }),
@@ -695,7 +695,7 @@ fn enum_internally_tagged() {
                         })),
                         right: Box::new(Type::Path(TypePath {
                             segments: Vec::from([PathSegment {
-                                name: "Bar",
+                                name: "Bar".to_string(),
                                 arguments: Vec::new()
                             },])
                         }))
@@ -712,7 +712,7 @@ fn enum_internally_tagged() {
                                 name: String::from("bar"),
                                 ty: Type::Path(TypePath {
                                     segments: Vec::from([PathSegment {
-                                        name: "Bar",
+                                        name: "Bar".to_string(),
                                         arguments: Vec::new()
                                     },])
                                 })
