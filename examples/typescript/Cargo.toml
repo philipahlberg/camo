@@ -7,5 +7,5 @@ publish = false
 
 [dependencies]
 camo = { path = "../../camo", features = ["derive", "typescript"] }
-serde = { version = "1.0.152", features = ["derive"] }
-clap = { version = "4.1.6", features = ["derive"] }
+serde = { version = "1.0.171", features = ["derive"] }
+clap = { version = "4.3.15", features = ["derive"] }

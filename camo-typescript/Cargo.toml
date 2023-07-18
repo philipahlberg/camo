@@ -19,5 +19,5 @@ camo-core = { path = "../camo-core", version = "^0.3.0" }
 
 [dev-dependencies]
 camo = { path = "../camo", features = ["derive"] }
-serde = { version = "1.0.152", features = ["derive"] }
+serde = { version = "1.0.171", features = ["derive"] }
 unindent = "0.2"
