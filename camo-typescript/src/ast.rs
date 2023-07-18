@@ -759,6 +759,10 @@ pub enum BuiltinType {
     Any,
     /// The `unknown` type.
     Unknown,
+    /// The `bigint` type.
+    BigInt,
+    /// The `symbol` type.
+    Symbol,
 }
 
 impl BuiltinType {
@@ -774,6 +778,8 @@ impl BuiltinType {
             BuiltinType::Never => "never",
             BuiltinType::Any => "any",
             BuiltinType::Unknown => "unknown",
+            BuiltinType::BigInt => "bigint",
+            BuiltinType::Symbol => "symbol",
         }
     }
 }
