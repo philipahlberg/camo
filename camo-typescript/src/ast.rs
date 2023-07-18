@@ -749,8 +749,24 @@ pub enum BuiltinType {
     String,
     /// The `null` type.
     Null,
+    /// The `undefined` type.
+    Undefined,
     /// The `never` type.
     Never,
+}
+
+impl BuiltinType {
+    /// The name of the built-in type.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            BuiltinType::Number => "number",
+            BuiltinType::Boolean => "boolean",
+            BuiltinType::String => "string",
+            BuiltinType::Null => "null",
+            BuiltinType::Undefined => "undefined",
+            BuiltinType::Never => "never",
+        }
+    }
 }
 
 impl From<camo::BuiltinType> for BuiltinType {
@@ -778,13 +794,7 @@ impl From<camo::BuiltinType> for BuiltinType {
 
 impl fmt::Display for BuiltinType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            BuiltinType::Number => write!(f, "number"),
-            BuiltinType::Boolean => write!(f, "boolean"),
-            BuiltinType::String => write!(f, "string"),
-            BuiltinType::Null => write!(f, "null"),
-            BuiltinType::Never => write!(f, "never"),
-        }
+        write!(f, "{}", self.as_str())
     }
 }
 
