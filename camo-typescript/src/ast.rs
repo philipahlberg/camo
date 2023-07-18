@@ -10,6 +10,24 @@ pub enum Definition {
     Alias(TypeAlias),
 }
 
+impl Definition {
+    /// The name of the type definition.
+    pub fn name(&self) -> &str {
+        match self {
+            Definition::Interface(i) => &i.name,
+            Definition::Alias(a) => &a.name,
+        }
+    }
+
+    /// `true` if the type definition is exported.
+    pub fn export(&self) -> bool {
+        match self {
+            Definition::Interface(i) => i.export,
+            Definition::Alias(a) => a.export,
+        }
+    }
+}
+
 impl From<Interface> for Definition {
     fn from(value: Interface) -> Self {
         Definition::Interface(value)
@@ -600,6 +618,18 @@ impl Type {
     }
 }
 
+impl From<&str> for Type {
+    fn from(value: &str) -> Self {
+        Self::Path(TypePath::from(value))
+    }
+}
+
+impl From<String> for Type {
+    fn from(value: String) -> Self {
+        Self::Path(TypePath::from(value))
+    }
+}
+
 impl From<BuiltinType> for Type {
     fn from(value: BuiltinType) -> Self {
         Self::Builtin(value)
@@ -780,8 +810,8 @@ impl From<camo::TypePath> for TypePath {
     }
 }
 
-impl<const N: usize> From<[&'static str; N]> for TypePath {
-    fn from(value: [&'static str; N]) -> Self {
+impl<const N: usize> From<[&str; N]> for TypePath {
+    fn from(value: [&str; N]) -> Self {
         Self {
             segments: value
                 .map(|name| PathSegment {
@@ -793,11 +823,22 @@ impl<const N: usize> From<[&'static str; N]> for TypePath {
     }
 }
 
-impl From<&'static str> for TypePath {
-    fn from(value: &'static str) -> Self {
+impl From<&str> for TypePath {
+    fn from(value: &str) -> Self {
         Self {
             segments: Vec::from([PathSegment {
                 name: value.to_string(),
+                arguments: Vec::new(),
+            }]),
+        }
+    }
+}
+
+impl From<String> for TypePath {
+    fn from(value: String) -> Self {
+        Self {
+            segments: Vec::from([PathSegment {
+                name: value,
                 arguments: Vec::new(),
             }]),
         }
