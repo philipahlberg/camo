@@ -3,8 +3,8 @@ use quote::quote;
 use syn::spanned::Spanned;
 use syn::{
     AttrStyle, Attribute, Data, DataEnum, DataStruct, DeriveInput, Fields, GenericArgument,
-    GenericParam, Generics, Meta, MetaList, PathArguments, PathSegment, TypePath, TypeReference,
-    Variant, Visibility,
+    GenericParam, Generics, LitStr, Meta, MetaList, Path, PathArguments, PathSegment, Token,
+    TypePath, TypeReference, Variant, Visibility,
 };
 
 use crate::ast;
@@ -41,8 +41,8 @@ pub enum ErrorKind {
     MiscTypes,
     Syn(syn::Error),
     InvalidRenameRule,
-    VisibilityCrate,
     VisibilityRestricted,
+    UnknownGenericArgument,
 }
 
 impl ErrorKind {
@@ -65,8 +65,8 @@ impl ErrorKind {
             Self::MiscTypes => "`camo` does not support this type",
             Self::Syn(_) => "`camo`: failed to parse attribute",
             Self::InvalidRenameRule => "`camo`: invalid rename rule",
-            Self::VisibilityCrate => "`camo` does not support `crate` visibility",
             Self::VisibilityRestricted => "`camo` does not support restricted visibility",
+            Self::UnknownGenericArgument => "`camo` does not support this generic argument",
         }
     }
 }
@@ -130,24 +130,14 @@ impl SerdeAttributeList {
     fn from_attribute(attr: &Attribute) -> Option<Result<Self, Error>> {
         match attr.style {
             AttrStyle::Outer => {
-                if attr.path.segments.len() != 1 {
+                if !attr.path().is_ident("serde") {
                     return None;
                 }
-                let segment = attr.path.segments.first().unwrap();
-                if segment.ident != "serde" {
-                    return None;
-                }
-                match attr.parse_meta() {
-                    Ok(Meta::Path(_)) => None,
-                    Ok(Meta::List(list)) => Some(Ok(Self(list))),
-                    Ok(Meta::NameValue(_)) => None,
-                    Err(err) => {
-                        let span = err.span();
-                        Some(Err(Error {
-                            kind: ErrorKind::Syn(err),
-                            span,
-                        }))
-                    }
+
+                match &attr.meta {
+                    Meta::Path(_) => None,
+                    Meta::List(list) => Some(Ok(Self(list.clone()))),
+                    Meta::NameValue(_) => None,
                 }
             }
             AttrStyle::Inner(_) => None,
@@ -158,16 +148,34 @@ impl SerdeAttributeList {
 impl ast::SerdeContainerAttributes {
     fn from_list(list: SerdeAttributeList) -> Result<Self, Error> {
         let SerdeAttributeList(meta) = list;
-        let rules: Result<Vec<_>, _> = meta
-            .nested
-            .into_iter()
-            .filter_map(|nested| match nested {
-                syn::NestedMeta::Meta(meta) => SerdeAttribute::from_meta(meta),
-                syn::NestedMeta::Lit(_) => None,
-            })
-            .collect();
 
-        let rules = rules?;
+        let mut rules = Vec::new();
+
+        let result = meta.parse_nested_meta(|meta| {
+            let lookahead = meta.input.lookahead1();
+            if !lookahead.peek(Token![=]) {
+                return Ok(());
+            }
+
+            let value = meta.value()?;
+            let lit: LitStr = value.parse()?;
+
+            match SerdeAttribute::from_pair(&meta.path, lit) {
+                Ok(Some(attr)) => {
+                    rules.push(attr);
+                    Ok(())
+                }
+                Ok(None) => Ok(()),
+                Err(error) => Err(syn::Error::new(error.span, error.kind.message())),
+            }
+        });
+
+        if let Err(error) = result {
+            return Err(Error {
+                kind: ErrorKind::Syn(error),
+                span: meta.span(),
+            });
+        }
 
         let rename_all = rules.iter().find_map(|attr| match attr {
             SerdeAttribute::Rename(_) => None,
@@ -214,42 +222,31 @@ enum SerdeAttribute {
 }
 
 impl SerdeAttribute {
-    fn from_meta(meta: Meta) -> Option<Result<Self, Error>> {
-        match meta {
-            Meta::Path(_) => None,
-            Meta::List(_) => None,
-            Meta::NameValue(v) => {
-                let name = v.path.segments.first().map(|s| s.ident.to_string());
-                let (span, value) = match v.lit {
-                    syn::Lit::Str(s) => (s.span(), s.value()),
-                    syn::Lit::ByteStr(_)
-                    | syn::Lit::Byte(_)
-                    | syn::Lit::Char(_)
-                    | syn::Lit::Int(_)
-                    | syn::Lit::Float(_)
-                    | syn::Lit::Bool(_)
-                    | syn::Lit::Verbatim(_) => return None,
-                };
-                match name.as_deref() {
-                    Some("rename_all") => match ast::RenameRule::from_string(value) {
-                        Some(rule) => Some(Ok(Self::RenameAll(rule))),
-                        None => Some(Err(Error {
-                            kind: ErrorKind::InvalidRenameRule,
-                            span,
-                        })),
-                    },
-                    Some("rename") => match ast::RenameRule::from_string(value) {
-                        Some(rule) => Some(Ok(Self::Rename(rule))),
-                        None => Some(Err(Error {
-                            kind: ErrorKind::InvalidRenameRule,
-                            span,
-                        })),
-                    },
-                    Some("tag") => Some(Ok(Self::Tag(value))),
-                    Some("content") => Some(Ok(Self::Content(value))),
-                    _ => None,
-                }
+    fn from_pair(path: &Path, literal: LitStr) -> Result<Option<Self>, Error> {
+        if path.is_ident("rename_all") {
+            if let Some(rule) = ast::RenameRule::from_string(literal.value()) {
+                Ok(Some(Self::RenameAll(rule)))
+            } else {
+                Err(Error {
+                    kind: ErrorKind::InvalidRenameRule,
+                    span: literal.span(),
+                })
             }
+        } else if path.is_ident("rename") {
+            if let Some(rule) = ast::RenameRule::from_string(literal.value()) {
+                Ok(Some(Self::Rename(rule)))
+            } else {
+                Err(Error {
+                    kind: ErrorKind::InvalidRenameRule,
+                    span: literal.span(),
+                })
+            }
+        } else if path.is_ident("tag") {
+            Ok(Some(Self::Tag(literal.value())))
+        } else if path.is_ident("content") {
+            Ok(Some(Self::Content(literal.value())))
+        } else {
+            Ok(None)
         }
     }
 }
@@ -294,10 +291,6 @@ impl ast::Visibility {
     fn from_visibility(visibility: Visibility) -> Result<Self, Error> {
         match visibility {
             Visibility::Public(_) => Ok(ast::Visibility::Pub),
-            Visibility::Crate(_) => Err(Error {
-                kind: ErrorKind::VisibilityCrate,
-                span: visibility.span(),
-            }),
             Visibility::Restricted(_) => Err(Error {
                 kind: ErrorKind::VisibilityRestricted,
                 span: visibility.span(),
@@ -445,16 +438,34 @@ impl ast::Variant {
 impl ast::SerdeVariantAttributes {
     fn from_list(list: SerdeAttributeList) -> Result<Self, Error> {
         let SerdeAttributeList(meta) = list;
-        let rules: Result<Vec<_>, _> = meta
-            .nested
-            .into_iter()
-            .filter_map(|nested| match nested {
-                syn::NestedMeta::Meta(meta) => SerdeAttribute::from_meta(meta),
-                syn::NestedMeta::Lit(_) => None,
-            })
-            .collect();
 
-        let rules = rules?;
+        let mut rules = Vec::new();
+
+        let result = meta.parse_nested_meta(|meta| {
+            let lookahead = meta.input.lookahead1();
+            if !lookahead.peek(Token![=]) {
+                return Ok(());
+            }
+
+            let value = meta.value()?;
+            let lit: LitStr = value.parse()?;
+
+            match SerdeAttribute::from_pair(&meta.path, lit) {
+                Ok(Some(attr)) => {
+                    rules.push(attr);
+                    Ok(())
+                }
+                Ok(None) => Ok(()),
+                Err(error) => Err(syn::Error::new(error.span, error.kind.message())),
+            }
+        });
+
+        if let Err(error) = result {
+            return Err(Error {
+                kind: ErrorKind::Syn(error),
+                span: meta.span(),
+            });
+        }
 
         let rename_all = rules.iter().find_map(|attr| match attr {
             SerdeAttribute::Rename(_) => None,
@@ -607,13 +618,21 @@ impl ast::GenericArgument {
                 kind: ErrorKind::ConstGenerics,
                 span: c.span(),
             }),
-            GenericArgument::Binding(binding) => Err(Error {
+            GenericArgument::AssocType(assoc) => Err(Error {
                 kind: ErrorKind::MiscTypes,
-                span: binding.span(),
+                span: assoc.span(),
+            }),
+            GenericArgument::AssocConst(assoc) => Err(Error {
+                kind: ErrorKind::MiscTypes,
+                span: assoc.span(),
             }),
             GenericArgument::Constraint(constraint) => Err(Error {
                 kind: ErrorKind::GenericBounds,
                 span: constraint.span(),
+            }),
+            _ => Err(Error {
+                kind: ErrorKind::UnknownGenericArgument,
+                span: argument.span(),
             }),
         }
     }
