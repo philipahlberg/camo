@@ -747,12 +747,18 @@ pub enum BuiltinType {
     Boolean,
     /// The `string` type.
     String,
+    /// The `object` type.
+    Object,
     /// The `null` type.
     Null,
     /// The `undefined` type.
     Undefined,
     /// The `never` type.
     Never,
+    /// The `any` type.
+    Any,
+    /// The `unknown` type.
+    Unknown,
 }
 
 impl BuiltinType {
@@ -762,9 +768,12 @@ impl BuiltinType {
             BuiltinType::Number => "number",
             BuiltinType::Boolean => "boolean",
             BuiltinType::String => "string",
+            BuiltinType::Object => "object",
             BuiltinType::Null => "null",
             BuiltinType::Undefined => "undefined",
             BuiltinType::Never => "never",
+            BuiltinType::Any => "any",
+            BuiltinType::Unknown => "unknown",
         }
     }
 }
