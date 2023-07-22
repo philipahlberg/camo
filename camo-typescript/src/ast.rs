@@ -132,6 +132,7 @@ impl From<camo::Container> for Definition {
                         .map(|field| Field {
                             name: rename_all.rename_field(field.name),
                             ty: Type::from(field.ty),
+                            optional: false,
                         })
                         .collect(),
                 }),
@@ -198,7 +199,7 @@ pub struct Interface {
 }
 
 impl fmt::Display for Interface {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.export {
             write!(f, "export ")?;
         }
@@ -225,14 +226,25 @@ pub struct Field {
     pub name: String,
     /// The type of the field.
     pub ty: Type,
+    /// Whether the field is optional, e.g. `optional?: boolean`.
+    pub optional: bool,
 }
 
 impl fmt::Display for Field {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = &self.name;
+        let ty = &self.ty;
+
         if is_valid_identifier(self.name.as_str()) {
-            write!(f, "{name}: {ty};", name = self.name, ty = self.ty)
+            if self.optional {
+                write!(f, "{name}?: {ty};")
+            } else {
+                write!(f, "{name}: {ty};")
+            }
+        } else if self.optional {
+            write!(f, r#"'{name}'?: {ty};"#)
         } else {
-            write!(f, r#"'{name}': {ty};"#, name = self.name, ty = self.ty)
+            write!(f, r#"'{name}': {ty};"#)
         }
     }
 }
@@ -458,6 +470,7 @@ impl Variant {
                 fields: Vec::from([Field {
                     name: variant_renamer.rename_type(variant.name),
                     ty: Type::from(ty),
+                    optional: false,
                 }]),
             })),
             camo::VariantContent::Named(fields) => Self(Type::Object(ObjectType {
@@ -469,9 +482,11 @@ impl Variant {
                             .map(|field| Field {
                                 name: field_renamer.rename_field(field.name),
                                 ty: Type::from(field.ty),
+                                optional: false,
                             })
                             .collect(),
                     }),
+                    optional: false,
                 }]),
             })),
         }
@@ -495,6 +510,7 @@ impl Variant {
                     ty: Type::Literal(LiteralType::String(
                         variant_renamer.rename_type(variant.name),
                     )),
+                    optional: false,
                 }]),
             })),
             camo::VariantContent::Unnamed(ty) => Self(Type::Object(ObjectType {
@@ -504,10 +520,12 @@ impl Variant {
                         ty: Type::Literal(LiteralType::String(
                             variant_renamer.rename_type(variant.name),
                         )),
+                        optional: false,
                     },
                     Field {
                         name: String::from(content),
                         ty: Type::from(ty),
+                        optional: false,
                     },
                 ]),
             })),
@@ -518,6 +536,7 @@ impl Variant {
                         ty: Type::Literal(LiteralType::String(
                             variant_renamer.rename_type(variant.name),
                         )),
+                        optional: false,
                     },
                     Field {
                         name: String::from(content),
@@ -527,9 +546,11 @@ impl Variant {
                                 .map(|field| Field {
                                     name: field_renamer.rename_field(field.name),
                                     ty: Type::from(field.ty),
+                                    optional: false,
                                 })
                                 .collect(),
                         }),
+                        optional: false,
                     },
                 ]),
             })),
@@ -549,6 +570,7 @@ impl Variant {
                     ty: Type::Literal(LiteralType::String(
                         variant_renamer.rename_type(variant.name),
                     )),
+                    optional: false,
                 }]),
             })),
             camo::VariantContent::Unnamed(ty) => Self(Type::Intersection(IntersectionType {
@@ -558,6 +580,7 @@ impl Variant {
                         ty: Type::Literal(LiteralType::String(
                             variant_renamer.rename_type(variant.name),
                         )),
+                        optional: false,
                     }]),
                 })),
                 right: Box::new(Type::from(ty)),
@@ -569,6 +592,7 @@ impl Variant {
                         ty: Type::Literal(LiteralType::String(
                             variant_renamer.rename_type(variant.name),
                         )),
+                        optional: false,
                     }]),
                 })),
                 right: Box::new(Type::Object(ObjectType {
@@ -577,6 +601,7 @@ impl Variant {
                         .map(|field| Field {
                             name: field_renamer.rename_field(field.name),
                             ty: Type::from(field.ty),
+                            optional: false,
                         })
                         .collect(),
                 })),
@@ -725,7 +750,7 @@ impl From<camo::Type> for Type {
 }
 
 impl fmt::Display for Type {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Type::Builtin(ty) => write!(f, "{}", ty),
             Type::Path(ty) => write!(f, "{}", ty),
@@ -808,7 +833,7 @@ impl From<camo::BuiltinType> for BuiltinType {
 }
 
 impl fmt::Display for BuiltinType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }

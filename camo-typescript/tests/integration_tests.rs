@@ -22,7 +22,8 @@ fn implements_from() {
             parameters: Vec::new(),
             fields: vec![Field {
                 name: String::from("foo"),
-                ty: Type::Builtin(BuiltinType::Number)
+                ty: Type::Builtin(BuiltinType::Number),
+                optional: false,
             },],
         },)
     );
@@ -45,7 +46,8 @@ fn supports_booleans() {
             parameters: Vec::new(),
             fields: vec![Field {
                 name: String::from("bar"),
-                ty: Type::Builtin(BuiltinType::Boolean)
+                ty: Type::Builtin(BuiltinType::Boolean),
+                optional: false,
             }]
         })
     );
@@ -71,15 +73,18 @@ fn supports_numbers() {
             fields: vec![
                 Field {
                     name: String::from("foo"),
-                    ty: Type::Builtin(BuiltinType::Number)
+                    ty: Type::Builtin(BuiltinType::Number),
+                    optional: false,
                 },
                 Field {
                     name: String::from("bar"),
-                    ty: Type::Builtin(BuiltinType::Number)
+                    ty: Type::Builtin(BuiltinType::Number),
+                    optional: false,
                 },
                 Field {
                     name: String::from("baz"),
-                    ty: Type::Builtin(BuiltinType::Number)
+                    ty: Type::Builtin(BuiltinType::Number),
+                    optional: false,
                 },
             ],
         })
@@ -103,7 +108,8 @@ fn supports_chars() {
             parameters: Vec::new(),
             fields: vec![Field {
                 name: String::from("foo"),
-                ty: Type::Builtin(BuiltinType::String)
+                ty: Type::Builtin(BuiltinType::String),
+                optional: false,
             }]
         })
     );
@@ -127,6 +133,7 @@ fn supports_string() {
             fields: vec![Field {
                 name: String::from("foo"),
                 ty: Type::Builtin(BuiltinType::String),
+                optional: false,
             }]
         })
     );
@@ -150,6 +157,7 @@ fn supports_str() {
             fields: vec![Field {
                 name: String::from("foo"),
                 ty: Type::Builtin(BuiltinType::String),
+                optional: false,
             }]
         })
     );
@@ -173,6 +181,7 @@ fn supports_vec() {
             fields: vec![Field {
                 name: String::from("foo"),
                 ty: Type::Array(ArrayType::from(Type::Builtin(BuiltinType::Number))),
+                optional: false,
             }]
         })
     );
@@ -196,6 +205,7 @@ fn supports_slice() {
             fields: vec![Field {
                 name: String::from("foo"),
                 ty: Type::Array(ArrayType::from(Type::Builtin(BuiltinType::Number))),
+                optional: false,
             }]
         })
     );
@@ -219,6 +229,7 @@ fn supports_array() {
             fields: vec![Field {
                 name: String::from("foo"),
                 ty: Type::Array(ArrayType::from(Type::Builtin(BuiltinType::Number))),
+                optional: false,
             }]
         })
     );
@@ -247,6 +258,7 @@ fn supports_option() {
                         Variant(Type::Builtin(BuiltinType::Null)),
                     ])
                 }),
+                optional: false,
             }]
         })
     );
@@ -270,10 +282,12 @@ fn display_type_alias() {
                             arguments: Vec::new(),
                         }]),
                     }),
+                    optional: false,
                 },
                 Field {
                     name: String::from("n"),
                     ty: Type::Builtin(BuiltinType::Number),
+                    optional: false,
                 },
             ]),
         }),
@@ -302,6 +316,7 @@ fn display_interface() {
             Field {
                 name: String::from("foo"),
                 ty: Type::Builtin(BuiltinType::Number),
+                optional: false,
             },
             Field {
                 name: String::from("bar"),
@@ -311,6 +326,7 @@ fn display_interface() {
                         arguments: Vec::new(),
                     }]),
                 }),
+                optional: false,
             },
         ],
     };
@@ -386,10 +402,12 @@ fn serde_container_rename_struct() {
                 Field {
                     name: String::from("one_two_three"),
                     ty: Type::Builtin(BuiltinType::Number),
+                    optional: false,
                 },
                 Field {
                     name: String::from("four_five_six"),
                     ty: Type::Array(ArrayType::from(Type::Builtin(BuiltinType::Number))),
+                    optional: false,
                 },
             ]),
         })
@@ -416,7 +434,8 @@ fn serde_container_rename_enum() {
                     Variant(Type::Object(ObjectType {
                         fields: Vec::from([Field {
                             name: String::from("VariantOne"),
-                            ty: Type::Builtin(BuiltinType::Number)
+                            ty: Type::Builtin(BuiltinType::Number),
+                            optional: false,
                         }])
                     })),
                     Variant(Type::Object(ObjectType {
@@ -425,9 +444,11 @@ fn serde_container_rename_enum() {
                             ty: Type::Object(ObjectType {
                                 fields: Vec::from([Field {
                                     name: String::from("value"),
-                                    ty: Type::Builtin(BuiltinType::String)
+                                    ty: Type::Builtin(BuiltinType::String),
+                                    optional: false,
                                 }])
-                            })
+                            }),
+                            optional: false,
                         }])
                     })),
                 ]),
@@ -457,10 +478,12 @@ fn serde_container_rename_all_struct() {
                 Field {
                     name: String::from("oneTwoThree"),
                     ty: Type::Builtin(BuiltinType::Number),
+                    optional: false,
                 },
                 Field {
                     name: String::from("fourFiveSix"),
                     ty: Type::Array(ArrayType::from(Type::Builtin(BuiltinType::Number))),
+                    optional: false,
                 },
             ]),
         })
@@ -487,7 +510,8 @@ fn serde_container_rename_all_enum() {
                     Variant(Type::Object(ObjectType {
                         fields: Vec::from([Field {
                             name: String::from("variantOne"),
-                            ty: Type::Builtin(BuiltinType::Number)
+                            ty: Type::Builtin(BuiltinType::Number),
+                            optional: false,
                         }])
                     })),
                     Variant(Type::Object(ObjectType {
@@ -496,9 +520,11 @@ fn serde_container_rename_all_enum() {
                             ty: Type::Object(ObjectType {
                                 fields: Vec::from([Field {
                                     name: String::from("value"),
-                                    ty: Type::Builtin(BuiltinType::String)
+                                    ty: Type::Builtin(BuiltinType::String),
+                                    optional: false,
                                 }])
-                            })
+                            }),
+                            optional: false,
                         }])
                     })),
                 ]),
@@ -530,7 +556,8 @@ fn serde_variant_rename() {
                     Variant(Type::Object(ObjectType {
                         fields: Vec::from([Field {
                             name: String::from("VARIANTONE"),
-                            ty: Type::Builtin(BuiltinType::Number)
+                            ty: Type::Builtin(BuiltinType::Number),
+                            optional: false,
                         }])
                     })),
                     Variant(Type::Object(ObjectType {
@@ -539,10 +566,12 @@ fn serde_variant_rename() {
                             ty: Type::Object(ObjectType {
                                 fields: Vec::from([Field {
                                     name: String::from("value"),
-                                    ty: Type::Builtin(BuiltinType::String)
+                                    ty: Type::Builtin(BuiltinType::String),
+                                    optional: false,
                                 }])
-                            })
-                        }])
+                            }),
+                            optional: false,
+                        }]),
                     })),
                 ]),
             })
@@ -573,7 +602,8 @@ fn serde_variant_rename_all() {
                     Variant(Type::Object(ObjectType {
                         fields: Vec::from([Field {
                             name: String::from("variantOne"),
-                            ty: Type::Builtin(BuiltinType::Number)
+                            ty: Type::Builtin(BuiltinType::Number),
+                            optional: false,
                         }])
                     })),
                     Variant(Type::Object(ObjectType {
@@ -582,9 +612,11 @@ fn serde_variant_rename_all() {
                             ty: Type::Object(ObjectType {
                                 fields: Vec::from([Field {
                                     name: String::from("VALUE"),
-                                    ty: Type::Builtin(BuiltinType::String)
+                                    ty: Type::Builtin(BuiltinType::String),
+                                    optional: false,
                                 }])
-                            })
+                            }),
+                            optional: false,
                         }])
                     })),
                 ]),
@@ -621,6 +653,7 @@ fn enum_externally_tagged() {
                         fields: Vec::from([Field {
                             name: String::from("One"),
                             ty: Type::Builtin(BuiltinType::Boolean),
+                            optional: false,
                         }])
                     })),
                     Variant(Type::Object(ObjectType {
@@ -632,6 +665,7 @@ fn enum_externally_tagged() {
                                     arguments: Vec::new()
                                 }])
                             }),
+                            optional: false,
                         }])
                     })),
                     Variant(Type::Object(ObjectType {
@@ -643,6 +677,7 @@ fn enum_externally_tagged() {
                                     arguments: Vec::new()
                                 }])
                             }),
+                            optional: false,
                         }])
                     })),
                     Variant(Type::Object(ObjectType {
@@ -653,9 +688,11 @@ fn enum_externally_tagged() {
                                     name: String::from("values"),
                                     ty: Type::Array(ArrayType::from(Type::Builtin(
                                         BuiltinType::Number
-                                    )))
+                                    ))),
+                                    optional: false,
                                 }])
                             }),
+                            optional: false,
                         }])
                     })),
                 ]),
@@ -690,7 +727,8 @@ fn enum_internally_tagged() {
                         left: Box::new(Type::Object(ObjectType {
                             fields: Vec::from([Field {
                                 name: String::from("tag"),
-                                ty: Type::Literal(LiteralType::String(String::from("VariantOne")))
+                                ty: Type::Literal(LiteralType::String(String::from("VariantOne"))),
+                                optional: false,
                             },])
                         })),
                         right: Box::new(Type::Path(TypePath {
@@ -704,7 +742,8 @@ fn enum_internally_tagged() {
                         left: Box::new(Type::Object(ObjectType {
                             fields: Vec::from([Field {
                                 name: String::from("tag"),
-                                ty: Type::Literal(LiteralType::String(String::from("VariantTwo")))
+                                ty: Type::Literal(LiteralType::String(String::from("VariantTwo"))),
+                                optional: false,
                             },])
                         })),
                         right: Box::new(Type::Object(ObjectType {
@@ -715,7 +754,8 @@ fn enum_internally_tagged() {
                                         name: "Bar".to_string(),
                                         arguments: Vec::new()
                                     },])
-                                })
+                                }),
+                                optional: false,
                             }])
                         }))
                     })),
@@ -748,11 +788,13 @@ fn enum_adjacently_tagged() {
                         fields: Vec::from([
                             Field {
                                 name: String::from("tag"),
-                                ty: Type::Literal(LiteralType::String(String::from("VariantOne")))
+                                ty: Type::Literal(LiteralType::String(String::from("VariantOne"))),
+                                optional: false,
                             },
                             Field {
                                 name: String::from("content"),
-                                ty: Type::Builtin(BuiltinType::Number)
+                                ty: Type::Builtin(BuiltinType::Number),
+                                optional: false,
                             },
                         ])
                     })),
@@ -760,7 +802,8 @@ fn enum_adjacently_tagged() {
                         fields: Vec::from([
                             Field {
                                 name: String::from("tag"),
-                                ty: Type::Literal(LiteralType::String(String::from("VariantTwo")))
+                                ty: Type::Literal(LiteralType::String(String::from("VariantTwo"))),
+                                optional: false,
                             },
                             Field {
                                 name: String::from("content"),
@@ -768,8 +811,10 @@ fn enum_adjacently_tagged() {
                                     fields: Vec::from([Field {
                                         name: String::from("valid"),
                                         ty: Type::Builtin(BuiltinType::Boolean),
+                                        optional: false,
                                     }])
-                                })
+                                }),
+                                optional: false,
                             },
                         ])
                     })),
